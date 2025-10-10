@@ -1,0 +1,13 @@
+Django>=4.2,<5.3
+django-environ>=0.11.2
+psycopg2-binary>=2.9
+
+# GeoDjango requires system libraries (GEOS, GDAL, PROJ) installed on your OS.
+# On macOS, install via Homebrew: brew install postgresql postgis gdal geos proj
+
+ZODB>=5.8.0
+transaction>=3.1.0
+persistent>=4.9.3
+zodbpickle>=2.6
+BTrees>=5.1
+
