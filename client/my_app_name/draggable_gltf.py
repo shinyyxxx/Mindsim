@@ -13,7 +13,6 @@ class DraggableGLTF(rx.Component):
     def add_custom_code(self) -> list[str]:
         return [
             """
-
             export const DraggableGLTF = ({ 
               url, 
               position=[0,0,0], 
@@ -42,6 +41,8 @@ class DraggableGLTF(rx.Component):
                 event.stopPropagation();
                 setIsDragging(true);
                 gl.domElement.style.cursor = 'grabbing';
+                
+                console.log('Model clicked at position:', currentPosition);
                 
                 const mouse = new THREE.Vector2(
                   (event.clientX / window.innerWidth) * 2 - 1,
@@ -107,7 +108,7 @@ class DraggableGLTF(rx.Component):
                 <group
                   ref={groupRef}
                   position={currentPosition}
-                  scale={isDragging ? scale * 1.1 : scale}
+                  scale={scale}
                   rotation={rotation}
                   onPointerDown={handlePointerDown}
                   onPointerEnter={() => !isDragging && (gl.domElement.style.cursor = 'grab')}

@@ -1,10 +1,7 @@
-from my_app_name.draggable_gltf import DraggableGLTF
-from my_app_name.static_gltf import GLTF
 from reflex.components.component import NoSSRComponent
 import reflex as rx
-from .sphere import Sphere, create_sphere
-from .cube import Cube, create_cube
-from .dragcube import DraggableCube
+from .draggable_gltf import DraggableGLTF
+from .components.base import base_page
 
 class R3FCanvas(NoSSRComponent):
     library = "@react-three/fiber@9.0.0"
@@ -13,12 +10,11 @@ class R3FCanvas(NoSSRComponent):
     def add_custom_code(self) -> list[str]:
         return [
             """
-            import React, { useRef } from 'react';
+            import React, { useRef, useState } from 'react';
             import { useThree, useFrame } from '@react-three/fiber';
-            import { useGLTF } from '@react-three/drei';
+            import { DragControls, useGLTF } from "@react-three/drei";
             """
         ]
-
 
 class ThreeScene(rx.Component):
     tag = "ThreeScene"
@@ -61,43 +57,52 @@ class ThreeScene(rx.Component):
         ]
 
 
-
+@rx.page(route="/")
 def index() -> rx.Component:
-    """Main page with a rotating cube inside R3F Canvas."""
-    return rx.box(
-        R3FCanvas.create(
-            ThreeScene.create(),
-            #Sphere.create(position=[-2, 0, 1], color="#ffe66d", size=0.6),
-            # create_sphere(position=[-2, 0, 1], color="#ff6b6b", size=0.6),
-            Cube.create(position=[2, 0, 1], color="#4ecdc4", size=1.0),
-            DraggableCube.create(position=[0, 0, 0], color="#ff6b6b", size=1.0),
-            DraggableGLTF.create(
-                url="cakeRoll/scene.gltf",
-                position=[-2, 0, 1],
-                scale=10,
-                rotation=[0, 0, 0]
-            ),
-            GLTF.create(
-                url="bunny/scene.gltf",
-                position=[-3, 0, 1],
-                scale=0.5,
-                rotation=[0, 0, 0]
-            ),
-            style={  
-                "width": "100%", 
-                "height": "100vh"
-            },
+    my_child = R3FCanvas.create(
+        ThreeScene.create(),
+        DraggableGLTF.create(
+            url="girl.glb",
+            position=[0, -2.84, 3.5],
+            scale=1
+        ),
+        DraggableGLTF.create(
+            url="water.glb",
+            position=[-1, 0.17, 4],
+            scale=0.14,
+            rotation=[0, 0, 0]
         ),
         style={
-            "width": "100vw",
-            "height": "100vh",
-            "margin": "0",
-            "padding": "0"
-        }
+            "width": "100%",
+            "height": "calc(100vh - 80px)"
+        },
     )
+    return base_page(my_child)
+
+def first_page() -> rx.Component:
+    my_child = R3FCanvas.create(
+        ThreeScene.create(),
+        DraggableGLTF.create(
+            url="girl.glb",
+            position=[0, -2.84, 3.5],
+            scale=1
+        ),
+        DraggableGLTF.create(
+            url="girl.glb",
+            position=[-1, 0.17, 4],
+            scale=0.14,
+            rotation=[0, 0, 0]
+        ),
+        style={
+            "width": "100%",
+            "height": "calc(100vh - 80px)"
+        },
+    )
+    return base_page(my_child)
 
 app = rx.App()
 app.add_page(index)
+app.add_page(first_page, route='/body')
 
 if __name__ == "__main__":
     app.run()
