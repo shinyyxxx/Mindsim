@@ -1,0 +1,9 @@
+{
+  "scenes": [
+    {
+      "path": "./assets/triplex_scenes/Scene.tsx",
+      "name": "Main 3D Scene",
+      "exportName": "default"
+    }
+  ]
+}
