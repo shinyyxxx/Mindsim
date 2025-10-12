@@ -1,9 +1,0 @@
-{
-  "dependencies": {
-    "@react-three/drei": "^10.7.6",
-    "@react-three/fiber": "^9.3.0",
-    "@splinetool/r3f-spline": "^1.0.2",
-    "three": "^0.179.1"
-  }
-}
-    
