@@ -3,6 +3,8 @@ import reflex as rx
 from .draggable_gltf import DraggableGLTF
 from .components.base import base_page
 from .components.mentalfactor import MentalSphere, MentalFactor, Mind
+from .room import Room, create_room
+from .player import Player, create_player
 
 class R3FCanvas(NoSSRComponent):
     library = "@react-three/fiber@9.0.0"
@@ -11,9 +13,10 @@ class R3FCanvas(NoSSRComponent):
     def add_custom_code(self) -> list[str]:
         return [
             """
-            import React, { useRef, useState } from 'react';
+            import React, { useRef, useState, useMemo } from 'react';
             import { useThree, useFrame } from '@react-three/fiber';
-            import { DragControls, useGLTF, Html } from "@react-three/drei";
+            import { useGLTF } from '@react-three/drei';
+            import * as THREE from 'three';
             """
         ]
 
@@ -23,7 +26,6 @@ class ThreeScene(rx.Component):
     def add_custom_code(self) -> list[str]:
         return [
             """
-            import * as THREE from 'three';
             export const ThreeScene = () => {
               return (
                 <>
@@ -62,6 +64,8 @@ class ThreeScene(rx.Component):
 def index() -> rx.Component:
     my_child = R3FCanvas.create(
         ThreeScene.create(),
+        create_room(),
+        create_player(),
         DraggableGLTF.create(
             url="girl.glb",
             position=[0, -2.84, 3.5],
