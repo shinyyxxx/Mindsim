@@ -7,7 +7,6 @@ def base_page(child: rx.Component) -> rx.Component:
         # Top navigation bar
         navbar(),
 
-        # Page content passed as `child`
         rx.box(
             child,
             style={

@@ -23,7 +23,6 @@ def navbar_icons_menu_item(
         href=url,
     )
 
-
 def navbar() -> rx.Component:
     return rx.box(
         rx.desktop_only(
