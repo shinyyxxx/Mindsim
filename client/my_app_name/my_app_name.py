@@ -142,10 +142,13 @@ def second_page() -> rx.Component:
 
     my_child = R3FCanvas.create(
         ThreeScene.create(),
+        create_room(),
+        create_player(),
         Mind.create(
             mental_spheres=mental_factors,
             container_radius=3.0,
             container_opacity=0.3,
+            position=[0, 1.2, 0]
         ),
         style={
             "width": "100%",
