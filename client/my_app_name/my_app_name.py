@@ -148,7 +148,7 @@ def second_page() -> rx.Component:
             mental_spheres=mental_factors,
             container_radius=3.0,
             container_opacity=0.3,
-            position=[0, 1.2, 0]
+            position=[0, 1.6, 0]
         ),
         style={
             "width": "100%",

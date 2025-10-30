@@ -105,10 +105,9 @@ class Mind(rx.Component):
     def add_custom_code(self) -> list[str]:
         return [
             """
-            export const MentalSphere = ({ name, detail, color, position = [0, 0, 0], scale = 1.0, index = 0, allSpheres = [], containerRadius = 3.0 }) => {
+            export const MentalSphere = ({ name, detail, color, position = [0, 0, 0], scale = 1.0, index = 0, allSpheres = [], containerRadius = 3.0, onSelect }) => {
                 const groupRef = useRef();
                 const [hovered, setHovered] = useState(false);
-                const [showPopup, setShowPopup] = useState(false);
                 const { camera } = useThree();
                 const initialPos = useRef(position);
                 const velocityRef = useRef([
@@ -131,13 +130,14 @@ class Mind(rx.Component):
                     currentPosRef.current = [...position];
                     groupRef.current.position.set(...currentPosRef.current);
 
-                    // Popup always faces camera
-                    if (showPopup && groupRef.current.children[0]) {
-                        groupRef.current.children[0].lookAt(camera.position);
-                    }
+                    // No local popup here; selection handled by parent
                 });
 
-                const handleClick = () => setShowPopup(false);
+                const handleClick = () => {
+                    if (onSelect) {
+                        onSelect({ name, detail, color, position, scale });
+                    }
+                };
 
                 return (
                     <group ref={groupRef} position={position}>
@@ -158,25 +158,7 @@ class Mind(rx.Component):
                             />
                         </mesh>
 
-                        {/* Popup box */}
-                        {showPopup && (
-                            <group position={[0, scale + 2, 0]}>
-                                <mesh onClick={(e) => e.stopPropagation()}>
-                                    <boxGeometry args={[4, 2.5, 0.2]} />
-                                    <meshStandardMaterial
-                                        color="#ffffff"
-                                        emissive="#ffffff"
-                                        emissiveIntensity={0.6}
-                                        metalness={0.3}
-                                        roughness={0.7}
-                                    />
-                                </mesh>
-                                <lineSegments>
-                                    <edgesGeometry args={[new THREE.BoxGeometry(4, 2.5, 0.2)]} />
-                                    <lineBasicMaterial color="#000000" linewidth={2} />
-                                </lineSegments>
-                            </group>
-                        )}
+                        {/* No local popup here */}
                     </group>
                 );
             };
@@ -185,6 +167,9 @@ class Mind(rx.Component):
                 const [positions, setPositions] = useState([]);
                 const [velocities, setVelocities] = useState([]);
                 const sphereRefs = useRef([]);
+                const [selected, setSelected] = useState(null);
+                const [centerPopupTex, setCenterPopupTex] = useState(null);
+                const overlayRef = useRef();
 
                 // Initialize random starting positions and velocities
                 useEffect(() => {
@@ -210,6 +195,48 @@ class Mind(rx.Component):
                         setVelocities(newVelocities);
                     }
                 }, [mentalSpheres, containerRadius, positions.length]);
+
+                // Build label texture for center popup when selected changes
+                useEffect(() => {
+                    if (!selected) { setCenterPopupTex(null); return; }
+                    const canvas = document.createElement('canvas');
+                    canvas.width = 1024; // bigger for crispness
+                    canvas.height = 512;
+                    const ctx = canvas.getContext('2d');
+                    if (!ctx) return;
+                    ctx.fillStyle = '#ffffff';
+                    ctx.fillRect(0, 0, canvas.width, canvas.height);
+                    ctx.strokeStyle = '#000000';
+                    ctx.lineWidth = 8;
+                    ctx.strokeRect(0, 0, canvas.width, canvas.height);
+                    ctx.fillStyle = '#111111';
+                    ctx.font = 'bold 64px Arial';
+                    ctx.textAlign = 'left';
+                    ctx.textBaseline = 'top';
+                    ctx.fillText(selected.name || 'Detail', 36, 36);
+                    const maxWidth = canvas.width - 72;
+                    const lineHeight = 44;
+                    let y = 130;
+                    ctx.font = '32px Arial';
+                    const words = (selected.detail || '').split(/\s+/);
+                    let line = '';
+                    for (let i = 0; i < words.length; i++) {
+                        const testLine = line + words[i] + ' ';
+                        const metrics = ctx.measureText(testLine);
+                        if (metrics.width > maxWidth && i > 0) {
+                            ctx.fillText(line, 36, y);
+                            line = words[i] + ' ';
+                            y += lineHeight;
+                        } else {
+                            line = testLine;
+                        }
+                        if (y > canvas.height - 56) break;
+                    }
+                    if (y <= canvas.height - 56) ctx.fillText(line, 36, y);
+                    const tex = new THREE.CanvasTexture(canvas);
+                    tex.needsUpdate = true;
+                    setCenterPopupTex(tex);
+                }, [selected]);
 
                 // Collision detection and response
                 useFrame(() => {
@@ -348,10 +375,21 @@ class Mind(rx.Component):
                     setVelocities(newVelocities);
                 });
 
+                // Keep overlay in front of camera and centered
+                useFrame(({ camera }) => {
+                    if (!overlayRef.current) return;
+                    const dir = new THREE.Vector3();
+                    camera.getWorldDirection(dir);
+                    const forward = dir.multiplyScalar(4.0); // distance in front of camera
+                    const down = camera.up.clone().multiplyScalar(-0.8); // slightly lower on screen
+                    overlayRef.current.position.copy(camera.position.clone().add(forward).add(down));
+                    // Match camera rotation to keep perfectly facing screen
+                    overlayRef.current.quaternion.copy(camera.quaternion);
+                });
+
                 return (
                     <group position={position}>
-                        {/* Container sphere */}
-                        <mesh>
+                        <mesh renderOrder={998} castShadow={false} receiveShadow={false}>
                             <sphereGeometry args={[containerRadius, 64, 64]} />
                             <meshStandardMaterial
                                 color="#4d4dff"
@@ -359,17 +397,14 @@ class Mind(rx.Component):
                                 opacity={containerOpacity}
                                 wireframe={false}
                                 emissive="#2d2d7f"
-                                emissiveIntensity={0.2}
+                                emissiveIntensity={0.4}
                                 metalness={0.1}
                                 roughness={0.7}
+                                side={THREE.BackSide}
+                                depthWrite={false}
+                                depthTest={false}
                             />
                         </mesh>
-
-                        {/* Container wireframe */}
-                        <lineSegments>
-                            <edgesGeometry args={[new THREE.SphereGeometry(containerRadius, 64, 64)]} />
-                            <lineBasicMaterial color="#6666ff" linewidth={1} />
-                        </lineSegments>
 
                         {/* Floating mental spheres */}
                         {mentalSpheres.map((sphere, idx) => (
@@ -384,8 +419,34 @@ class Mind(rx.Component):
                                 index={idx}
                                 allSpheres={mentalSpheres}
                                 containerRadius={containerRadius}
+                                onSelect={(s) => setSelected(s)}
                             />
                         ))}
+
+                        {/* Centered screen overlay popup */}
+                        {selected && (
+                            <group ref={overlayRef} renderOrder={999}>
+                                {/* Flat card as a plane for perfect border alignment */}
+                                <mesh onClick={(e) => e.stopPropagation()}>
+                                    <planeGeometry args={[6, 3.5]} />
+                                    <meshStandardMaterial color="#ffffff" emissive="#ffffff" emissiveIntensity={0.5} depthTest={false} />
+                                </mesh>
+                                <lineSegments>
+                                    <edgesGeometry args={[new THREE.PlaneGeometry(6, 3.5)]} />
+                                    <lineBasicMaterial color="#000000" linewidth={2} depthTest={false} />
+                                </lineSegments>
+                                {centerPopupTex && (
+                                    <sprite position={[0, 0, 0.01]} scale={[5.4, 3.0, 1]} renderOrder={1000}>
+                                        <spriteMaterial attach="material" map={centerPopupTex} transparent depthTest={false} />
+                                    </sprite>
+                                )}
+                                {/* Close button */}
+                                <mesh position={[2.6, 1.4, 0.02]} onClick={(e) => { e.stopPropagation(); setSelected(null); }}>
+                                    <boxGeometry args={[0.4, 0.4, 0.02]} />
+                                    <meshStandardMaterial color="#ff6666" emissive="#ff6666" emissiveIntensity={0.4} depthTest={false} />
+                                </mesh>
+                            </group>
+                        )}
                     </group>
                 );
             };
