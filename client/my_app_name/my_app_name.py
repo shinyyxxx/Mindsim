@@ -2,7 +2,7 @@ from reflex.components.component import NoSSRComponent
 import reflex as rx
 from .draggable_gltf import DraggableGLTF
 from .components.base import base_page
-from .components.mentalfactor import MentalSphere, MentalFactor, Mind
+from .components.mentalfactor import MentalSphere, Mind
 from .room import Room, create_room, create_rooms
 from .player import Player, create_player
 from .collision import create_collision_boundaries
