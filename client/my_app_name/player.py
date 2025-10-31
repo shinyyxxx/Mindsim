@@ -13,7 +13,7 @@ class Player(rx.Component):
               const { camera } = useThree();
               const [keys, setKeys] = useState({});
               const [isPointerLocked, setIsPointerLocked] = useState(false);
-              const moveSpeed = 0.05;
+              const moveSpeed = 5.0; // Units per second
               const lookSpeed = 0.0005;
               
               // Create reusable Euler object to prevent snapping
@@ -93,7 +93,7 @@ class Player(rx.Component):
               }, [camera, isPointerLocked]);
 
               // Movement logic
-              useFrame(() => {
+              useFrame((state, delta) => {
                 if (!isPointerLocked) return;
 
                 // Get camera rotation as Euler angles
@@ -112,29 +112,38 @@ class Player(rx.Component):
                   -Math.sin(yaw)
                 );
 
+                // Store current position
+                const oldX = camera.position.x;
+                const oldZ = camera.position.z;
+                
+                // Calculate frame-independent movement distance
+                const movement = moveSpeed * delta;
+                
                 // Apply movement based on pressed keys
                 if (keys['KeyW']) {
-                  camera.position.addScaledVector(forward, moveSpeed);
+                  camera.position.addScaledVector(forward, movement);
                 }
                 if (keys['KeyS']) {
-                  camera.position.addScaledVector(forward, -moveSpeed);
+                  camera.position.addScaledVector(forward, -movement);
                 }
                 if (keys['KeyA']) {
-                  camera.position.addScaledVector(right, -moveSpeed);
+                  camera.position.addScaledVector(right, -movement);
                 }
                 if (keys['KeyD']) {
-                  camera.position.addScaledVector(right, moveSpeed);
+                  camera.position.addScaledVector(right, movement);
+                }
+
+                // Check collision with walls
+                if (window.checkCollision && window.checkCollision(camera.position.x, camera.position.z)) {
+                  // Revert to old position if collision detected
+                  camera.position.x = oldX;
+                  camera.position.z = oldZ;
                 }
 
                 // Keep player above ground
                 if (camera.position.y < 1) {
                   camera.position.y = 1;
                 }
-
-                // Keep player within room bounds
-                const roomSize = 8;
-                camera.position.x = Math.max(-roomSize, Math.min(roomSize, camera.position.x));
-                camera.position.z = Math.max(-roomSize, Math.min(roomSize, camera.position.z));
               });
 
               return null; // Player doesn't render anything visible

@@ -5,7 +5,7 @@ from .navbar import navbar
 def base_page(child: rx.Component) -> rx.Component:
     return rx.box(
         # Top navigation bar
-        navbar(),
+        # navbar(),
 
         rx.box(
             child,

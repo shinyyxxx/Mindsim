@@ -3,8 +3,9 @@ import reflex as rx
 from .draggable_gltf import DraggableGLTF
 from .components.base import base_page
 from .components.mentalfactor import MentalSphere, MentalFactor, Mind
-from .room import Room, create_room
+from .room import Room, create_room, create_rooms
 from .player import Player, create_player
+from .collision import create_collision_boundaries
 
 class R3FCanvas(NoSSRComponent):
     library = "@react-three/fiber@9.0.0"
@@ -62,9 +63,14 @@ class ThreeScene(rx.Component):
 
 @rx.page(route="/")
 def index() -> rx.Component:
+    room_configs = [
+        {"position": (0,0,0), "width": 20, "length": 20, "height": 10, "color": "#FFFFFF", "doors": ["right"]},
+        {"position": (17.5,0,0), "width": 15, "length": 10, "height": 8, "color": "#FFFFFF", "doors": ["left"]}
+    ]
     my_child = R3FCanvas.create(
         ThreeScene.create(),
-        create_room(),
+        create_rooms(room_configs),
+        create_collision_boundaries(room_configs),
         create_player(),
         DraggableGLTF.create(
             url="girl.glb",
@@ -85,20 +91,65 @@ def index() -> rx.Component:
     return base_page(my_child)
 
 def first_page() -> rx.Component:
+    mental_factors = [
+        {
+            "name": "Focus",
+            "detail": "Concentration and attention span\nAbility to maintain focus on tasks",
+            "color": "#FF6B6B",
+            "position": [2, 0, 0],
+            "scale": 0.4,
+        },
+        {
+            "name": "Creativity",
+            "detail": "Innovative thinking\nAbility to generate new ideas",
+            "color": "#4ECDC4",
+            "position": [-2, 0, 0],
+            "scale": 0.4,
+        },
+        {
+            "name": "Mindfulness",
+            "detail": "Present moment awareness\nEmotional regulation",
+            "color": "#95E1D3",
+            "position": [0, 2, 0],
+            "scale": 0.4,
+        },
+        {
+            "name": "Resilience",
+            "detail": "Ability to recover from challenges\nEmotional strength",
+            "color": "#F38181",
+            "position": [0, -2, 0],
+            "scale": 0.4,
+        },
+        {
+            "name": "Clarity",
+            "detail": "Mental clarity and organization\nCognitive processing",
+            "color": "#AA96DA",
+            "position": [0, 0, 2],
+            "scale": 0.4,
+        },
+    ]
+
+    room_configs = [
+        {"position": (0,0,0), "width": 20, "length": 20, "height": 10, "color": "#FFFFFF", "doors": ["front"]},
+        {"position": (0,0,16), "width": 8, "length": 12, "height": 10, "color": "#FFFFFF", "doors": ["back"]}
+    ]
     my_child = R3FCanvas.create(
         ThreeScene.create(),
-        MentalSphere.create(
-            name="Focus",
-            detail="Concentration and attention span\nAbility to maintain focus on tasks",
-            color="#FF6B6B",
-            position=[0, 0, 0],
-            scale=1.5,
+        create_rooms(room_configs),
+        create_collision_boundaries(room_configs),
+        create_player(),
+        Mind.create(
+            mental_spheres=mental_factors,
+            container_radius=3.0,
+            container_opacity=0.3,
+            position=[0, 1.2, 0]
         ),
         style={
             "width": "100%",
-            "height": "calc(100vh - 80px)"
+            "height": "calc(100vh - 80px)",
         },
     )
+
     return base_page(my_child)
 
 def second_page() -> rx.Component:
@@ -148,7 +199,7 @@ def second_page() -> rx.Component:
             mental_spheres=mental_factors,
             container_radius=3.0,
             container_opacity=0.3,
-            position=[0, 1.2, 0]
+            position=[0, 1.6, 0]
         ),
         style={
             "width": "100%",
