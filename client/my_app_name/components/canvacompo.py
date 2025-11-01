@@ -68,10 +68,10 @@ class ModelViewer3D(rx.Component):
         return [
             """
             function ModelViewer3DComponent({ url, position=[0,0,0], scale=1, rotation=[0,0,0] }) {
-                const [model, setModel] = useState(null);
-                const modelRef = useRef();
+                const [model, setModel] = React.useState(null);
+                const modelRef = React.useRef();
 
-                useEffect(() => {
+                React.useEffect(() => {
                     if (!url) return;
                     let cancelled = false;
 
