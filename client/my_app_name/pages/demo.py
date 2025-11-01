@@ -2,9 +2,7 @@ import reflex as rx
 from ..components.draggable_gltf import DraggableGLTF
 from ..components.base import base_page
 from ..components.mentalfactor import MentalSphere, Mind
-from ..components.room import Room, create_room, create_rooms
 from ..components.player import Player, create_player
-from ..components.collision import create_collision_boundaries
 from ..components.canvacompo import R3FCanvas, ThreeScene, ModelViewer3D
 
 def first_page() -> rx.Component:
@@ -46,29 +44,24 @@ def first_page() -> rx.Component:
         },
     ]
 
-    room_configs = [
-        {"position": (0,0,0), "width": 20, "length": 20, "height": 10, "color": "#FFFFFF", "doors": ["front"]},
-        {"position": (0,0,16), "width": 8, "length": 12, "height": 10, "color": "#FFFFFF", "doors": ["back"]}
-    ]
     my_child = R3FCanvas.create(
         ThreeScene.create(),
-        create_rooms(room_configs),
-        create_collision_boundaries(room_configs),
+        ModelViewer3D.create(
+            url=rx.asset("LabPlan.gltf"),
+            position=[0, 0, 0],
+            scale=1.0,
+        ),
         create_player(),
         ModelViewer3D.create(
             url=rx.asset("girl.glb"),
-            position=[0, 0, 0],
-            scale=1.0,
+            position=[3, 0, -3.5],
+            scale=0.5,
         ),
         Mind.create(
             mental_spheres=mental_factors,
             container_radius=2.0,
-            container_opacity=0.25,
-            position=[0, 1.2, 0],
-            glass_tint="#88ccff",
-            glass_transmission=0.9,
-            glass_thickness=0.5,
-            glass_roughness=0.1,
+            container_opacity=0.3,
+            position=[0, 1.2, 0]
         ),
         style={
             "width": "100%",

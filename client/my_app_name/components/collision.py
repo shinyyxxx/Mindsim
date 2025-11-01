@@ -1,141 +1,121 @@
 # collision.py
 import reflex as rx
-import json
 
-class CollisionBoundaries(rx.Component):
-    """Component that provides collision boundary data for rooms."""
-    tag = "CollisionBoundaries"
-
-    def __init__(self, room_configs, **kwargs):
-        super().__init__(**kwargs)
-        self.room_configs = room_configs
+class GLTFCollision(rx.Component):
+    """Component that provides collision detection for GLTF room models using raycasting."""
+    tag = "GLTFCollision"
 
     def add_custom_code(self) -> list[str]:
-        # Convert room configs to JSON for use in JS
-        rooms_json = json.dumps(self.room_configs)
-        
         return [
-            f"""
-            export const CollisionBoundaries = () => {{
-              const {{ camera }} = useThree();
-              const rooms = {rooms_json};
+            """
+            export const GLTFCollision = () => {
+              const { scene, camera } = useThree();
+              const raycaster = React.useMemo(() => new THREE.Raycaster(), []);
+              const playerRadius = 0.5; // Player collision radius
+              const collisionHeight = 1.5; // Height to check collisions at (player eye level)
               
-              // Door dimensions
-              const doorWidth = 3;
-              const doorHeight = 6;
+              // Collect all meshes from the GLTF room model for collision detection
+              const getRoomMeshes = React.useCallback(() => {
+                const meshes = [];
+                
+                // Search the scene for all meshes
+                scene.traverse((child) => {
+                  if (child.isMesh && child.geometry) {
+                    // Skip camera
+                    if (child === camera) return;
+                    
+                    // Skip very small objects (likely characters or small props)
+                    // Check bounding sphere radius
+                    child.geometry.computeBoundingSphere();
+                    const radius = child.geometry.boundingSphere?.radius || 0;
+                    
+                    // Only include larger objects (room geometry)
+                    // Adjust this threshold based on your models
+                    if (radius > 0.5) {
+                      meshes.push(child);
+                    }
+                  }
+                });
+                
+                return meshes;
+              }, [scene, camera]);
               
-              // Check if position collides with walls
-              const checkCollision = (x, z) => {{
-                const wallBuffer = 0.8; // Distance to keep from walls (reduced for better door access)
-                let insideAnyRoom = false;
+              // Check collision at a given x, z position
+              const checkCollision = React.useCallback((x, z) => {
+                const meshes = getRoomMeshes();
+                if (meshes.length === 0) {
+                  return false; // No meshes loaded yet, allow movement
+                }
                 
-                // First check if we're inside any room (with small margin)
-                for (const room of rooms) {{
-                  const [px, py, pz] = room.position;
-                  const w = room.width;
-                  const l = room.length;
-                  
-                  const xMin = px - w/2;
-                  const xMax = px + w/2;
-                  const zMin = pz - l/2;
-                  const zMax = pz + l/2;
-                  
-                  // Check with small outward margin to allow doorway transitions
-                  if (x >= xMin - 1 && x <= xMax + 1 && z >= zMin - 1 && z <= zMax + 1) {{
-                    insideAnyRoom = true;
-                    break;
-                  }}
-                }}
+                // Check collisions in multiple directions around the player
+                const directions = [
+                  new THREE.Vector3(0, 0, 1),   // Forward
+                  new THREE.Vector3(0, 0, -1),  // Backward
+                  new THREE.Vector3(1, 0, 0),  // Right
+                  new THREE.Vector3(-1, 0, 0), // Left
+                  new THREE.Vector3(0.707, 0, 0.707),   // Forward-right
+                  new THREE.Vector3(-0.707, 0, 0.707),  // Forward-left
+                  new THREE.Vector3(0.707, 0, -0.707),  // Backward-right
+                  new THREE.Vector3(-0.707, 0, -0.707), // Backward-left
+                ];
                 
-                // If not near any room, block movement
-                if (!insideAnyRoom) {{
-                  return true; // Collision - too far from all rooms
-                }}
+                // Check collisions at player height
+                const checkHeight = collisionHeight;
+                const checkPosition = new THREE.Vector3(x, checkHeight, z);
                 
-                // Now check collision with walls (respecting doors)
-                for (const room of rooms) {{
-                  const [px, py, pz] = room.position;
-                  const w = room.width;
-                  const l = room.length;
-                  const doors = room.doors || [];
+                for (const direction of directions) {
+                  raycaster.set(checkPosition, direction);
+                  raycaster.far = playerRadius;
                   
-                  const xMin = px - w/2;
-                  const xMax = px + w/2;
-                  const zMin = pz - l/2;
-                  const zMax = pz + l/2;
+                  const intersects = raycaster.intersectObjects(meshes, false);
                   
-                  // Left wall
-                  if (!doors.includes('left')) {{
-                    if (x < xMin + wallBuffer && x > xMin - wallBuffer && z >= zMin && z <= zMax) {{
-                      return true; // Solid wall
-                    }}
-                  }} else {{
-                    // Wall with door - check if hitting wall segments
-                    if (x < xMin + wallBuffer && x > xMin - wallBuffer) {{
-                      const doorOffset = doorWidth / 2;
-                      if ((z < pz - doorOffset || z > pz + doorOffset) && z >= zMin && z <= zMax) {{
-                        return true; // Hit wall segment beside door
-                      }}
-                    }}
-                  }}
-                  
-                  // Right wall
-                  if (!doors.includes('right')) {{
-                    if (x > xMax - wallBuffer && x < xMax + wallBuffer && z >= zMin && z <= zMax) {{
-                      return true;
-                    }}
-                  }} else {{
-                    if (x > xMax - wallBuffer && x < xMax + wallBuffer) {{
-                      const doorOffset = doorWidth / 2;
-                      if ((z < pz - doorOffset || z > pz + doorOffset) && z >= zMin && z <= zMax) {{
-                        return true;
-                      }}
-                    }}
-                  }}
-                  
-                  // Back wall
-                  if (!doors.includes('back')) {{
-                    if (z < zMin + wallBuffer && z > zMin - wallBuffer && x >= xMin && x <= xMax) {{
-                      return true;
-                    }}
-                  }} else {{
-                    if (z < zMin + wallBuffer && z > zMin - wallBuffer) {{
-                      const doorOffset = doorWidth / 2;
-                      if ((x < px - doorOffset || x > px + doorOffset) && x >= xMin && x <= xMax) {{
-                        return true;
-                      }}
-                    }}
-                  }}
-                  
-                  // Front wall
-                  if (!doors.includes('front')) {{
-                    if (z > zMax - wallBuffer && z < zMax + wallBuffer && x >= xMin && x <= xMax) {{
-                      return true;
-                    }}
-                  }} else {{
-                    if (z > zMax - wallBuffer && z < zMax + wallBuffer) {{
-                      const doorOffset = doorWidth / 2;
-                      if ((x < px - doorOffset || x > px + doorOffset) && x >= xMin && x <= xMax) {{
-                        return true;
-                      }}
-                    }}
-                  }}
-                }}
+                  if (intersects.length > 0) {
+                    const distance = intersects[0].distance;
+                    if (distance < playerRadius) {
+                      return true; // Collision detected
+                    }
+                  }
+                }
+                
+                // Also check vertical collision (ceiling/floor)
+                raycaster.set(checkPosition, new THREE.Vector3(0, 1, 0));
+                raycaster.far = 0.5;
+                const verticalIntersects = raycaster.intersectObjects(meshes, false);
+                if (verticalIntersects.length > 0 && verticalIntersects[0].distance < 0.5) {
+                  return true; // Hitting ceiling
+                }
+                
+                raycaster.set(checkPosition, new THREE.Vector3(0, -1, 0));
+                raycaster.far = 1.0;
+                const floorIntersects = raycaster.intersectObjects(meshes, false);
+                if (floorIntersects.length > 0 && floorIntersects[0].distance < 0.5) {
+                  // Floor collision is OK, but too close means we're inside the floor
+                  if (floorIntersects[0].distance < 0.3) {
+                    return true;
+                  }
+                }
                 
                 return false; // No collision
-              }};
+              }, [getRoomMeshes, raycaster]);
               
               // Store collision function globally so Player can access it
-              useEffect(() => {{
+              React.useEffect(() => {
                 window.checkCollision = checkCollision;
-              }}, []);
+                
+                return () => {
+                  // Cleanup
+                  if (window.checkCollision === checkCollision) {
+                    delete window.checkCollision;
+                  }
+                };
+              }, [checkCollision]);
               
               return null;
-            }};
+            };
             """
         ]
 
-def create_collision_boundaries(room_configs):
-    """Factory for collision boundaries."""
-    return CollisionBoundaries.create(room_configs=room_configs)
+def create_gltf_collision():
+    """Factory for GLTF collision detection."""
+    return GLTFCollision.create()
 
