@@ -18,6 +18,52 @@ def _mental_sphere_js() -> str:
                 ]);
                 const currentPosRef = useRef([...position]);
 
+                // Build a billboarded label texture for the sphere name
+                const labelTex = useMemo(() => {
+                    const label = name || '';
+                    const canvas = document.createElement('canvas');
+                    const ctx = canvas.getContext('2d');
+                    if (!ctx) return null;
+
+                    const fontSize = 64;
+                    const padding = 16;
+                    ctx.font = `bold ${fontSize}px Arial`;
+                    const metrics = ctx.measureText(label);
+                    const textWidth = Math.ceil(metrics.width);
+
+                    // High-DPI canvas for crisper texture
+                    const dpi = 2;
+                    canvas.width = (textWidth + padding * 2) * dpi;
+                    canvas.height = (fontSize + padding * 2) * dpi;
+                    ctx.scale(dpi, dpi);
+
+                    // Background rounded rect with semi-transparency
+                    const drawRoundedRect = (x, y, w, h, r) => {
+                        ctx.beginPath();
+                        ctx.moveTo(x + r, y);
+                        ctx.arcTo(x + w, y, x + w, y + h, r);
+                        ctx.arcTo(x + w, y + h, x, y + h, r);
+                        ctx.arcTo(x, y + h, x, y, r);
+                        ctx.arcTo(x, y, x + w, y, r);
+                        ctx.closePath();
+                    };
+                    ctx.fillStyle = 'rgba(0,0,0,0.6)';
+                    drawRoundedRect(0, 0, textWidth + padding * 2, fontSize + padding * 2, 12);
+                    ctx.fill();
+
+                    // Text
+                    ctx.fillStyle = '#ffffff';
+                    ctx.textBaseline = 'top';
+                    ctx.textAlign = 'left';
+                    ctx.font = `bold ${fontSize}px Arial`;
+                    ctx.fillText(label, padding, padding);
+
+                    const tex = new THREE.CanvasTexture(canvas);
+                    tex.needsUpdate = true;
+                    tex.minFilter = THREE.LinearFilter;
+                    return { tex, widthUnits: (textWidth + padding * 2) / fontSize };
+                }, [name]);
+
                 // Update initial position when prop changes
                 useEffect(() => {
                     initialPos.current = position;
@@ -40,6 +86,11 @@ def _mental_sphere_js() -> str:
 
                 return (
                     <group ref={groupRef} position={position}>
+                        {labelTex && (
+                            <sprite position={[0, scale + 0.02, 0]} scale={[Math.max(0.06, labelTex.widthUnits * 0.06), 0.1, 0.1]} renderOrder={1000}>
+                                <spriteMaterial attach="material" map={labelTex.tex} transparent depthTest={false} depthWrite={false} />
+                            </sprite>
+                        )}
                         <mesh
                             onClick={handleClick}
                             onPointerEnter={() => setHovered(true)}
@@ -87,18 +138,46 @@ class Mind(rx.Component):
     container_radius: rx.Var[float] = 3.0
     container_opacity: rx.Var[float] = 1
     position: rx.Var[list] = [0, 0, 0]
+    glass_texture: rx.Var[str] = ""
+    glass_tint: rx.Var[str] = "#ffffff"
+    glass_transmission: rx.Var[float] = 0.9
+    glass_thickness: rx.Var[float] = 0.4
+    glass_roughness: rx.Var[float] = 0.05
 
     def add_custom_code(self) -> list[str]:
         return [
             _mental_sphere_js(),
             """
-            export const Mind = ({ mentalSpheres = [], containerRadius = 3.0, containerOpacity = 0.2, position = [0, 0, 0] }) => {
+            export const Mind = ({
+                mentalSpheres = [],
+                containerRadius = 3.0,
+                containerOpacity = 0.2,
+                position = [0, 0, 0],
+                glassTexture = '',
+                glassTint = '#ffffff',
+                glassTransmission = 0.9,
+                glassThickness = 0.4,
+                glassRoughness = 0.05,
+            }) => {
                 const [positions, setPositions] = useState([]);
                 const [velocities, setVelocities] = useState([]);
                 const [selected, setSelected] = useState(null);
                 const [centerPopupTex, setCenterPopupTex] = useState(null);
                 const overlayRef = useRef();
                 const MentalSphereComp = globalThis.MentalSphere;
+
+                // Optional glass texture
+                const glassMap = useMemo(() => {
+                    if (!glassTexture) return null;
+                    try {
+                        const loader = new THREE.TextureLoader();
+                        const tex = loader.load(glassTexture);
+                        return tex;
+                    } catch (e) {
+                        console.warn('Failed to load glass texture', glassTexture, e);
+                        return null;
+                    }
+                }, [glassTexture]);
 
                 // Initialize random starting positions and velocities
                 useEffect(() => {
@@ -320,15 +399,15 @@ class Mind(rx.Component):
                     <group position={position}>
                         <mesh renderOrder={998} castShadow={false} receiveShadow={false}>
                             <sphereGeometry args={[containerRadius, 64, 64]} />
-                            <meshStandardMaterial
-                                color="#4d4dff"
+                            <meshPhysicalMaterial
+                                color={glassTint}
                                 transparent
                                 opacity={containerOpacity}
-                                wireframe={false}
-                                emissive="#2d2d7f"
-                                emissiveIntensity={0.4}
-                                metalness={0.1}
-                                roughness={0.7}
+                                transmission={glassTransmission}
+                                thickness={glassThickness}
+                                roughness={glassRoughness}
+                                metalness={0.0}
+                                map={glassMap || undefined}
                                 side={THREE.BackSide}
                                 depthWrite={false}
                                 depthTest={false}
@@ -355,10 +434,10 @@ class Mind(rx.Component):
                         {selected && (
                             <group ref={overlayRef} renderOrder={999}>
                                 {/* Flat card as a plane for perfect border alignment */}
-                                <mesh onClick={(e) => e.stopPropagation()}>
+                                <sprite onClick={(e) => e.stopPropagation()}>
                                     <planeGeometry args={[6, 3.5]} />
-                                    <meshStandardMaterial color="#ffffff" emissive="#ffffff" emissiveIntensity={0.5} depthTest={false} depthWrite={false} />
-                                </mesh>
+                                    <spriteMaterial color="#ffffff" emissive="#ffffff" emissiveIntensity={0.5} depthTest={false} depthWrite={false} />
+                                </sprite>
                                 <lineSegments>
                                     <edgesGeometry args={[new THREE.PlaneGeometry(6, 3.5)]} />
                                     <lineBasicMaterial color="#000000" linewidth={2} depthTest={false} depthWrite={false} />

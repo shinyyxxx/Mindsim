@@ -63,8 +63,12 @@ def first_page() -> rx.Component:
         Mind.create(
             mental_spheres=mental_factors,
             container_radius=2.0,
-            container_opacity=0.3,
-            position=[0, 1.2, 0]
+            container_opacity=0.25,
+            position=[0, 1.2, 0],
+            glass_tint="#88ccff",
+            glass_transmission=0.9,
+            glass_thickness=0.5,
+            glass_roughness=0.1,
         ),
         style={
             "width": "100%",
