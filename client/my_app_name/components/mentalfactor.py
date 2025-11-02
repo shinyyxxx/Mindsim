@@ -135,6 +135,7 @@ class Mind(rx.Component):
     tag = "Mind"
 
     mental_spheres: rx.Var[list]
+    mind_id: rx.Var[str] = ""
     container_radius: rx.Var[float] = 3.0
     container_opacity: rx.Var[float] = 1
     position: rx.Var[list] = [0, 0, 0]
@@ -181,23 +182,27 @@ class Mind(rx.Component):
 
                 // Initialize random starting positions and velocities
                 useEffect(() => {
-                    if (mentalSpheres.length > 0 && positions.length === 0) {
-                        const newPositions = mentalSpheres.map(() => {
+                    if (mentalSpheres.length > positions.length) {
+                        // Add positions for newly added spheres
+                        const newPositions = [...positions];
+                        const newVelocities = [...velocities];
+                        
+                        for (let i = positions.length; i < mentalSpheres.length; i++) {
                             const theta = Math.random() * Math.PI * 2;
                             const phi = Math.random() * Math.PI;
                             const r = Math.random() * containerRadius * 0.6; // Start closer to center
-                            return [
+                            newPositions.push([
                                 r * Math.sin(phi) * Math.cos(theta),
                                 r * Math.cos(phi),
                                 r * Math.sin(phi) * Math.sin(theta)
-                            ];
-                        });
-                        
-                        const newVelocities = mentalSpheres.map(() => [
-                            (Math.random() - 0.5) * 0.2,
-                            (Math.random() - 0.5) * 0.2,
-                            (Math.random() - 0.5) * 0.2
-                        ]);
+                            ]);
+                            
+                            newVelocities.push([
+                                (Math.random() - 0.5) * 0.2,
+                                (Math.random() - 0.5) * 0.2,
+                                (Math.random() - 0.5) * 0.2
+                            ]);
+                        }
                         
                         setPositions(newPositions);
                         setVelocities(newVelocities);
@@ -383,7 +388,7 @@ class Mind(rx.Component):
                     setVelocities(newVelocities);
                 });
 
-                // Keep overlay in front of camera and centered
+                // Keep overlay in front of camera and centered (positioned in world space, independent of Mind position)
                 useFrame(({ camera }) => {
                     if (!overlayRef.current) return;
                     const dir = new THREE.Vector3();
@@ -396,41 +401,44 @@ class Mind(rx.Component):
                 });
 
                 return (
-                    <group position={position}>
-                        <mesh renderOrder={998} castShadow={false} receiveShadow={false}>
-                            <sphereGeometry args={[containerRadius, 64, 64]} />
-                            <meshPhysicalMaterial
-                                color={glassTint}
-                                transparent
-                                opacity={containerOpacity}
-                                transmission={glassTransmission}
-                                thickness={glassThickness}
-                                roughness={glassRoughness}
-                                metalness={0.0}
-                                map={glassMap || undefined}
-                                side={THREE.BackSide}
-                                depthWrite={false}
-                                depthTest={false}
-                            />
-                        </mesh>
+                    <>
+                        {/* Mind container and spheres - positioned group */}
+                        <group position={position}>
+                            <mesh renderOrder={998} castShadow={false} receiveShadow={false}>
+                                <sphereGeometry args={[containerRadius, 64, 64]} />
+                                <meshPhysicalMaterial
+                                    color={glassTint}
+                                    transparent
+                                    opacity={containerOpacity}
+                                    transmission={glassTransmission}
+                                    thickness={glassThickness}
+                                    roughness={glassRoughness}
+                                    metalness={0.0}
+                                    map={glassMap || undefined}
+                                    side={THREE.BackSide}
+                                    depthWrite={false}
+                                    depthTest={false}
+                                />
+                            </mesh>
 
-                        {/* Floating mental spheres */}
-                        {mentalSpheres.map((sphere, idx) => (
-                            <MentalSphereComp
-                                key={idx}
-                                name={sphere.name}
-                                detail={sphere.detail}
-                                color={sphere.color}
-                                position={positions[idx] || [0, 0, 0]}
-                                scale={sphere.scale || 0.8}
-                                index={idx}
-                                allSpheres={mentalSpheres}
-                                containerRadius={containerRadius}
-                                onSelect={(s) => setSelected(s)}
-                            />
-                        ))}
+                            {/* Floating mental spheres */}
+                            {mentalSpheres.map((sphere, idx) => (
+                                <MentalSphereComp
+                                    key={idx}
+                                    name={sphere.name}
+                                    detail={sphere.detail}
+                                    color={sphere.color}
+                                    position={positions[idx] || [0, 0, 0]}
+                                    scale={sphere.scale || 0.8}
+                                    index={idx}
+                                    allSpheres={mentalSpheres}
+                                    containerRadius={containerRadius}
+                                    onSelect={(s) => setSelected(s)}
+                                />
+                            ))}
+                        </group>
 
-                        {/* Centered screen overlay popup */}
+                        {/* Centered screen overlay popup - outside positioned group so it's independent of Mind position */}
                         {selected && (
                             <group ref={overlayRef} renderOrder={999}>
                                 {/* Flat card as a plane for perfect border alignment */}
@@ -454,7 +462,7 @@ class Mind(rx.Component):
                                 </mesh>
                             </group>
                         )}
-                    </group>
+                    </>
                 );
             };
             """

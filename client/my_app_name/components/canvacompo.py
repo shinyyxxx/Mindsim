@@ -40,7 +40,7 @@ class ThreeScene(rx.Component):
                   {/* Directional light for nice shading */}
                   <directionalLight
                     position={[-5, 10, -5]}
-                    intensity={0.8}
+                    intensity={1}
                     castShadow
                   />
 
