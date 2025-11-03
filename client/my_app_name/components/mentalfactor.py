@@ -1,111 +1,12 @@
 import reflex as rx
 from typing import List, Optional
 
-class MentalFactor(rx.Component):    
-    name: str
-    detail: str
-    color: str  # hex color
-    position: List[float]  # [x, y, z]
-    scale: float
-
-class MentalSphere(MentalFactor):
-    """Visual representation of a MentalFactor as a 3D sphere with popup on click."""
-    tag = "MentalSphere"
-    
-    # Add event handler for popup
-    on_click: rx.EventHandler[lambda: []]
-
-    def add_custom_code(self) -> list[str]:
-        return [
-            """
-            export const MentalSphere = ({ name, detail, color, position = [0, 0, 0], scale = 1.0, onClick }) => {
-                const meshRef = useRef();
-                const boxRef = useRef();
-                const [hovered, setHovered] = useState(false);
-                const [showPopup, setShowPopup] = useState(false);
-                const { camera } = useThree();
-
-                useFrame(() => {
-
-                    // Update popup to face camera
-                    if (boxRef.current) {
-                        boxRef.current.lookAt(camera.position);
-                    }
-                });
-
-                const handleClick = () => {
-                    setShowPopup(true);
-                    if (onClick) {
-                        onClick({ name, detail, color, position });
-                    }
-                };
-
-                const closePopup = () => {
-                    setShowPopup(false);
-                };
-
-                return (
-                    <group>
-                        {/* Sphere */}
-                        <group position={position}>
-                            <mesh
-                                ref={meshRef}
-                                onClick={handleClick}
-                                onPointerEnter={() => setHovered(true)}
-                                onPointerLeave={() => setHovered(false)}
-                            >
-                                <sphereGeometry args={[1, 32, 32]} />
-                                <meshStandardMaterial
-                                    color={color}
-                                    emissive={hovered ? color : '#000000'}
-                                    emissiveIntensity={hovered ? 0.3 : 0}
-                                    roughness={0.4}
-                                    metalness={0.6}
-                                />
-                            </mesh>
-                        </group>
-
-                        {/* Popup 3D Box - Centered */}
-                        {showPopup && (
-                            <group position={[0, 0, 0]} ref={boxRef}>
-                                {/* White Box */}
-                                <mesh position={[0, 0, 0]} onClick={closePopup}>
-                                    <boxGeometry args={[6, 4, 3]} />
-                                    <meshStandardMaterial
-                                        color="#ffffff"
-                                        emissive="#ffffff"
-                                        emissiveIntensity={0.8}
-                                        metalness={0.3}
-                                        roughness={0.7}
-                                    />
-                                </mesh>
-
-                                {/* Black Border */}
-                                <lineSegments position={[0, 0, 0]}>
-                                    <edgesGeometry args={[new THREE.BoxGeometry(6, 4, 3)]} />
-                                    <lineBasicMaterial color="#000000" linewidth={2} />
-                                </lineSegments>
-                            </group>
-                        )}
-                    </group>
-                );
-            };
-            """
-        ]
-
-class Mind(rx.Component):
-    """Container sphere with floating MentalSpheres inside."""
-    tag = "Mind"
-
-    mental_spheres: rx.Var[list]
-    container_radius: rx.Var[float] = 3.0
-    container_opacity: rx.Var[float] = 1
-    position: rx.Var[list] = [0, 0, 0]
-
-    def add_custom_code(self) -> list[str]:
-        return [
-            """
-            export const MentalSphere = ({ name, detail, color, position = [0, 0, 0], scale = 1.0, index = 0, allSpheres = [], containerRadius = 3.0, onSelect }) => {
+def _mental_sphere_js() -> str:
+    return (
+        """
+        // Define MentalSphere once and register globally
+        if (!globalThis.MentalSphere) {
+            const MentalSphere = ({ name, detail, color, position = [0, 0, 0], scale = 1.0, index = 0, allSpheres = [], containerRadius = 3.0, onSelect }) => {
                 const groupRef = useRef();
                 const [hovered, setHovered] = useState(false);
                 const { camera } = useThree();
@@ -116,6 +17,52 @@ class Mind(rx.Component):
                     (Math.random() - 0.5) * 0.15
                 ]);
                 const currentPosRef = useRef([...position]);
+
+                // Build a billboarded label texture for the sphere name
+                const labelTex = useMemo(() => {
+                    const label = name || '';
+                    const canvas = document.createElement('canvas');
+                    const ctx = canvas.getContext('2d');
+                    if (!ctx) return null;
+
+                    const fontSize = 64;
+                    const padding = 16;
+                    ctx.font = `bold ${fontSize}px Arial`;
+                    const metrics = ctx.measureText(label);
+                    const textWidth = Math.ceil(metrics.width);
+
+                    // High-DPI canvas for crisper texture
+                    const dpi = 2;
+                    canvas.width = (textWidth + padding * 2) * dpi;
+                    canvas.height = (fontSize + padding * 2) * dpi;
+                    ctx.scale(dpi, dpi);
+
+                    // Background rounded rect with semi-transparency
+                    const drawRoundedRect = (x, y, w, h, r) => {
+                        ctx.beginPath();
+                        ctx.moveTo(x + r, y);
+                        ctx.arcTo(x + w, y, x + w, y + h, r);
+                        ctx.arcTo(x + w, y + h, x, y + h, r);
+                        ctx.arcTo(x, y + h, x, y, r);
+                        ctx.arcTo(x, y, x + w, y, r);
+                        ctx.closePath();
+                    };
+                    ctx.fillStyle = 'rgba(0,0,0,0.6)';
+                    drawRoundedRect(0, 0, textWidth + padding * 2, fontSize + padding * 2, 12);
+                    ctx.fill();
+
+                    // Text
+                    ctx.fillStyle = '#ffffff';
+                    ctx.textBaseline = 'top';
+                    ctx.textAlign = 'left';
+                    ctx.font = `bold ${fontSize}px Arial`;
+                    ctx.fillText(label, padding, padding);
+
+                    const tex = new THREE.CanvasTexture(canvas);
+                    tex.needsUpdate = true;
+                    tex.minFilter = THREE.LinearFilter;
+                    return { tex, widthUnits: (textWidth + padding * 2) / fontSize };
+                }, [name]);
 
                 // Update initial position when prop changes
                 useEffect(() => {
@@ -129,8 +76,6 @@ class Mind(rx.Component):
                     // Update position from parent component
                     currentPosRef.current = [...position];
                     groupRef.current.position.set(...currentPosRef.current);
-
-                    // No local popup here; selection handled by parent
                 });
 
                 const handleClick = () => {
@@ -141,7 +86,11 @@ class Mind(rx.Component):
 
                 return (
                     <group ref={groupRef} position={position}>
-                        {/* Main sphere */}
+                        {labelTex && (
+                            <sprite position={[0, scale + 0.02, 0]} scale={[Math.max(0.06, labelTex.widthUnits * 0.06), 0.1, 0.1]} renderOrder={1000}>
+                                <spriteMaterial attach="material" map={labelTex.tex} transparent depthTest={false} depthWrite={false} />
+                            </sprite>
+                        )}
                         <mesh
                             onClick={handleClick}
                             onPointerEnter={() => setHovered(true)}
@@ -157,39 +106,103 @@ class Mind(rx.Component):
                                 metalness={0.6}
                             />
                         </mesh>
-
-                        {/* No local popup here */}
                     </group>
                 );
             };
+            globalThis.MentalSphere = MentalSphere;
+        }
+        """
+    )
 
-            export const Mind = ({ mentalSpheres = [], containerRadius = 3.0, containerOpacity = 0.2, position = [0, 0, 0] }) => {
+class MentalSphere(rx.Component):
+    """Single floating sphere inside the mind container."""
+    tag = "MentalSphere"
+
+    name: str
+    detail: str
+    color: str  # hex color
+    position: List[float]  # [x, y, z]
+    scale: float
+
+    def add_custom_code(self) -> list[str]:
+        return [
+            _mental_sphere_js()
+        ]
+
+
+class Mind(rx.Component):
+    """Container sphere with floating MentalSpheres inside."""
+    tag = "Mind"
+
+    mental_spheres: rx.Var[list]
+    mind_id: rx.Var[str] = ""
+    container_radius: rx.Var[float] = 3.0
+    container_opacity: rx.Var[float] = 1
+    position: rx.Var[list] = [0, 0, 0]
+    glass_texture: rx.Var[str] = ""
+    glass_tint: rx.Var[str] = "#ffffff"
+    glass_transmission: rx.Var[float] = 0.9
+    glass_thickness: rx.Var[float] = 0.4
+    glass_roughness: rx.Var[float] = 0.05
+
+    def add_custom_code(self) -> list[str]:
+        return [
+            _mental_sphere_js(),
+            """
+            export const Mind = ({
+                mentalSpheres = [],
+                containerRadius = 3.0,
+                containerOpacity = 0.2,
+                position = [0, 0, 0],
+                glassTexture = '',
+                glassTint = '#ffffff',
+                glassTransmission = 0.9,
+                glassThickness = 0.4,
+                glassRoughness = 0.05,
+            }) => {
                 const [positions, setPositions] = useState([]);
                 const [velocities, setVelocities] = useState([]);
-                const sphereRefs = useRef([]);
                 const [selected, setSelected] = useState(null);
                 const [centerPopupTex, setCenterPopupTex] = useState(null);
                 const overlayRef = useRef();
+                const MentalSphereComp = globalThis.MentalSphere;
+
+                // Optional glass texture
+                const glassMap = useMemo(() => {
+                    if (!glassTexture) return null;
+                    try {
+                        const loader = new THREE.TextureLoader();
+                        const tex = loader.load(glassTexture);
+                        return tex;
+                    } catch (e) {
+                        console.warn('Failed to load glass texture', glassTexture, e);
+                        return null;
+                    }
+                }, [glassTexture]);
 
                 // Initialize random starting positions and velocities
                 useEffect(() => {
-                    if (mentalSpheres.length > 0 && positions.length === 0) {
-                        const newPositions = mentalSpheres.map(() => {
+                    if (mentalSpheres.length > positions.length) {
+                        // Add positions for newly added spheres
+                        const newPositions = [...positions];
+                        const newVelocities = [...velocities];
+                        
+                        for (let i = positions.length; i < mentalSpheres.length; i++) {
                             const theta = Math.random() * Math.PI * 2;
                             const phi = Math.random() * Math.PI;
                             const r = Math.random() * containerRadius * 0.6; // Start closer to center
-                            return [
+                            newPositions.push([
                                 r * Math.sin(phi) * Math.cos(theta),
                                 r * Math.cos(phi),
                                 r * Math.sin(phi) * Math.sin(theta)
-                            ];
-                        });
-                        
-                        const newVelocities = mentalSpheres.map(() => [
-                            (Math.random() - 0.5) * 0.2,
-                            (Math.random() - 0.5) * 0.2,
-                            (Math.random() - 0.5) * 0.2
-                        ]);
+                            ]);
+                            
+                            newVelocities.push([
+                                (Math.random() - 0.5) * 0.2,
+                                (Math.random() - 0.5) * 0.2,
+                                (Math.random() - 0.5) * 0.2
+                            ]);
+                        }
                         
                         setPositions(newPositions);
                         setVelocities(newVelocities);
@@ -375,7 +388,7 @@ class Mind(rx.Component):
                     setVelocities(newVelocities);
                 });
 
-                // Keep overlay in front of camera and centered
+                // Keep overlay in front of camera and centered (positioned in world space, independent of Mind position)
                 useFrame(({ camera }) => {
                     if (!overlayRef.current) return;
                     const dir = new THREE.Vector3();
@@ -388,66 +401,68 @@ class Mind(rx.Component):
                 });
 
                 return (
-                    <group position={position}>
-                        <mesh renderOrder={998} castShadow={false} receiveShadow={false}>
-                            <sphereGeometry args={[containerRadius, 64, 64]} />
-                            <meshStandardMaterial
-                                color="#4d4dff"
-                                transparent
-                                opacity={containerOpacity}
-                                wireframe={false}
-                                emissive="#2d2d7f"
-                                emissiveIntensity={0.4}
-                                metalness={0.1}
-                                roughness={0.7}
-                                side={THREE.BackSide}
-                                depthWrite={false}
-                                depthTest={false}
-                            />
-                        </mesh>
+                    <>
+                        {/* Mind container and spheres - positioned group */}
+                        <group position={position}>
+                            <mesh renderOrder={998} castShadow={false} receiveShadow={false}>
+                                <sphereGeometry args={[containerRadius, 64, 64]} />
+                                <meshPhysicalMaterial
+                                    color={glassTint}
+                                    transparent
+                                    opacity={containerOpacity}
+                                    transmission={glassTransmission}
+                                    thickness={glassThickness}
+                                    roughness={glassRoughness}
+                                    metalness={0.0}
+                                    map={glassMap || undefined}
+                                    side={THREE.BackSide}
+                                    depthWrite={false}
+                                    depthTest={false}
+                                />
+                            </mesh>
 
-                        {/* Floating mental spheres */}
-                        {mentalSpheres.map((sphere, idx) => (
-                            <MentalSphere
-                                key={idx}
-                                ref={el => sphereRefs.current[idx] = el}
-                                name={sphere.name}
-                                detail={sphere.detail}
-                                color={sphere.color}
-                                position={positions[idx] || [0, 0, 0]}
-                                scale={sphere.scale || 0.8}
-                                index={idx}
-                                allSpheres={mentalSpheres}
-                                containerRadius={containerRadius}
-                                onSelect={(s) => setSelected(s)}
-                            />
-                        ))}
+                            {/* Floating mental spheres */}
+                            {mentalSpheres.map((sphere, idx) => (
+                                <MentalSphereComp
+                                    key={idx}
+                                    name={sphere.name}
+                                    detail={sphere.detail}
+                                    color={sphere.color}
+                                    position={positions[idx] || [0, 0, 0]}
+                                    scale={sphere.scale || 0.8}
+                                    index={idx}
+                                    allSpheres={mentalSpheres}
+                                    containerRadius={containerRadius}
+                                    onSelect={(s) => setSelected(s)}
+                                />
+                            ))}
+                        </group>
 
-                        {/* Centered screen overlay popup */}
+                        {/* Centered screen overlay popup - outside positioned group so it's independent of Mind position */}
                         {selected && (
                             <group ref={overlayRef} renderOrder={999}>
                                 {/* Flat card as a plane for perfect border alignment */}
-                                <mesh onClick={(e) => e.stopPropagation()}>
+                                <sprite onClick={(e) => e.stopPropagation()}>
                                     <planeGeometry args={[6, 3.5]} />
-                                    <meshStandardMaterial color="#ffffff" emissive="#ffffff" emissiveIntensity={0.5} depthTest={false} />
-                                </mesh>
+                                    <spriteMaterial color="#ffffff" emissive="#ffffff" emissiveIntensity={0.5} depthTest={false} depthWrite={false} />
+                                </sprite>
                                 <lineSegments>
                                     <edgesGeometry args={[new THREE.PlaneGeometry(6, 3.5)]} />
-                                    <lineBasicMaterial color="#000000" linewidth={2} depthTest={false} />
+                                    <lineBasicMaterial color="#000000" linewidth={2} depthTest={false} depthWrite={false} />
                                 </lineSegments>
                                 {centerPopupTex && (
                                     <sprite position={[0, 0, 0.01]} scale={[5.4, 3.0, 1]} renderOrder={1000}>
-                                        <spriteMaterial attach="material" map={centerPopupTex} transparent depthTest={false} />
+                                        <spriteMaterial attach="material" map={centerPopupTex} transparent depthTest={false} depthWrite={false} />
                                     </sprite>
                                 )}
                                 {/* Close button */}
-                                <mesh position={[2.6, 1.4, 0.02]} onClick={(e) => { e.stopPropagation(); setSelected(null); }}>
+                                <mesh position={[2.6, 1.4, 0.05]} renderOrder={1001} onClick={(e) => { e.stopPropagation(); setSelected(null); }}>
                                     <boxGeometry args={[0.4, 0.4, 0.02]} />
-                                    <meshStandardMaterial color="#ff6666" emissive="#ff6666" emissiveIntensity={0.4} depthTest={false} />
+                                    <meshStandardMaterial color="#ff6666" emissive="#ff6666" emissiveIntensity={0.4} depthTest={false} depthWrite={false} transparent opacity={1} />
                                 </mesh>
                             </group>
                         )}
-                    </group>
+                    </>
                 );
             };
             """
