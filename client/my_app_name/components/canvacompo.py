@@ -25,23 +25,29 @@ class ThreeScene(rx.Component):
             export const ThreeScene = () => {
               return (
                 <>
-                  {/* Global ambient light for base illumination */}
-                  <ambientLight intensity={0.3} />
+                  {/* Global ambient light for base illumination - increased for better visibility */}
+                  <ambientLight intensity={0.6} />
 
                   {/* Stronger spotlight with shadows */}
                   <spotLight
                     position={[10, 15, 10]}
                     angle={0.3}
                     penumbra={0.5}
-                    intensity={1.2}
+                    intensity={1.5}
                     castShadow
                   />
 
                   {/* Directional light for nice shading */}
                   <directionalLight
                     position={[-5, 10, -5]}
-                    intensity={1}
+                    intensity={1.2}
                     castShadow
+                  />
+
+                  {/* Additional point light for better illumination */}
+                  <pointLight
+                    position={[0, 10, 0]}
+                    intensity={0.8}
                   />
 
                   {/* Ground plane to catch shadows */}

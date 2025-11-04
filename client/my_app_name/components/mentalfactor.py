@@ -25,8 +25,8 @@ def _mental_sphere_js() -> str:
                     const ctx = canvas.getContext('2d');
                     if (!ctx) return null;
 
-                    const fontSize = 64;
-                    const padding = 16;
+                    const fontSize = 160;
+                    const padding = 28;
                     ctx.font = `bold ${fontSize}px Arial`;
                     const metrics = ctx.measureText(label);
                     const textWidth = Math.ceil(metrics.width);
@@ -78,21 +78,14 @@ def _mental_sphere_js() -> str:
                     groupRef.current.position.set(...currentPosRef.current);
                 });
 
-                const handleClick = () => {
-                    if (onSelect) {
-                        onSelect({ name, detail, color, position, scale });
-                    }
-                };
-
                 return (
                     <group ref={groupRef} position={position}>
                         {labelTex && (
-                            <sprite position={[0, scale + 0.02, 0]} scale={[Math.max(0.06, labelTex.widthUnits * 0.06), 0.1, 0.1]} renderOrder={1000}>
+                            <sprite position={[0, scale + 0.02, 0]} scale={[Math.max(0.15, labelTex.widthUnits * 0.15), 0.25, 0.25]} renderOrder={1000}>
                                 <spriteMaterial attach="material" map={labelTex.tex} transparent depthTest={false} depthWrite={false} />
                             </sprite>
                         )}
                         <mesh
-                            onClick={handleClick}
                             onPointerEnter={() => setHovered(true)}
                             onPointerLeave={() => setHovered(false)}
                             castShadow
@@ -198,9 +191,9 @@ class Mind(rx.Component):
                             ]);
                             
                             newVelocities.push([
-                                (Math.random() - 0.5) * 0.2,
-                                (Math.random() - 0.5) * 0.2,
-                                (Math.random() - 0.5) * 0.2
+                                (Math.random() - 0.5) * 0.08,
+                                (Math.random() - 0.5) * 0.08,
+                                (Math.random() - 0.5) * 0.08
                             ]);
                         }
                         
@@ -258,7 +251,7 @@ class Mind(rx.Component):
                     const newPositions = [...positions];
                     const newVelocities = [...velocities];
                     const dt = 0.016; // frame time
-                    const maxSpeed = 1.5;
+                    const maxSpeed = 0.6;
 
                     // Update positions and handle container collisions
                     for (let i = 0; i < newPositions.length; i++) {
@@ -269,9 +262,9 @@ class Mind(rx.Component):
 
                         // Add some random movement
                         if (Math.random() > 0.95) {
-                            vel[0] += (Math.random() - 0.5) * 0.1;
-                            vel[1] += (Math.random() - 0.5) * 0.1;
-                            vel[2] += (Math.random() - 0.5) * 0.1;
+                            vel[0] += (Math.random() - 0.5) * 0.04;
+                            vel[1] += (Math.random() - 0.5) * 0.04;
+                            vel[2] += (Math.random() - 0.5) * 0.04;
                         }
 
                         // Clamp velocity
