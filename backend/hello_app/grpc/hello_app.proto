@@ -1,0 +1,52 @@
+syntax = "proto3";
+
+package test_project.hello_app;
+
+import "google/protobuf/empty.proto";
+
+service HelloController {
+    rpc Create(HelloRequest) returns (HelloResponse) {}
+    rpc Destroy(HelloDestroyRequest) returns (google.protobuf.Empty) {}
+    rpc List(HelloListRequest) returns (HelloListResponse) {}
+    rpc PartialUpdate(HelloPartialUpdateRequest) returns (HelloResponse) {}
+    rpc Retrieve(HelloRetrieveRequest) returns (HelloResponse) {}
+    rpc Update(HelloRequest) returns (HelloResponse) {}
+}
+
+message HelloDestroyRequest {
+    string id = 1;
+}
+
+message HelloListRequest {
+}
+
+message HelloListResponse {
+    repeated HelloResponse results = 1;
+}
+
+message HelloPartialUpdateRequest {
+    optional string id = 1;
+    string message = 2;
+    string location = 3;
+    optional string properties_key = 4;
+    repeated string _partial_update_fields = 5;
+}
+
+message HelloRequest {
+    optional string id = 1;
+    string message = 2;
+    string location = 3;
+    optional string properties_key = 4;
+}
+
+message HelloResponse {
+    optional string id = 1;
+    string message = 2;
+    string location = 3;
+    optional string properties_key = 4;
+}
+
+message HelloRetrieveRequest {
+    string id = 1;
+}
+
