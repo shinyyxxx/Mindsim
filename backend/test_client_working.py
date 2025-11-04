@@ -14,8 +14,8 @@ from django.contrib.gis.geos import Point
 
 # Import generated proto (after generateproto)
 try:
-    from hello_app.grpc.hello_app_pb2 import HelloRequest, HelloListRequest
-    from hello_app.grpc.hello_app_pb2_grpc import HelloControllerStub
+    from application.grpc.hello_app_pb2 import HelloRequest, HelloListRequest
+    from application.grpc.hello_app_pb2_grpc import HelloControllerStub
 except ImportError:
     print("ERROR: Proto files not found!")
     print("Please run: python manage.py generateproto")
@@ -67,7 +67,7 @@ async def test_retrieve_hello(hello_id: str):
         stub = HelloControllerStub(channel)
         
         try:
-            from hello_app.grpc.hello_app_pb2 import HelloRetrieveRequest
+            from application.grpc.hello_app_pb2 import HelloRetrieveRequest
             request = HelloRetrieveRequest(id=hello_id)
             response = await stub.Retrieve(request)
             print(f"\n✓ Retrieved Hello:")

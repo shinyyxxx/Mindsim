@@ -7,8 +7,8 @@ import grpc
 
 # Import generated proto (after generateproto)
 try:
-    from hello_app.grpc.hello_app_pb2 import HelloRequest, HelloListRequest, HelloRetrieveRequest
-    from hello_app.grpc.hello_app_pb2_grpc import HelloControllerStub
+    from application.grpc.hello_app_pb2 import HelloRequest, HelloListRequest, HelloRetrieveRequest
+    from application.grpc.hello_app_pb2_grpc import HelloControllerStub
 except ImportError:
     print("ERROR: Proto files not found!")
     print("Please run: docker exec test-backend-1 python manage.py generateproto")
