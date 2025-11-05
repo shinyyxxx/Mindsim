@@ -1,6 +1,3 @@
-"""
-URL configuration for api project.
-"""
 from django.contrib import admin
 from django.urls import path
 import app_auth.views as auth_views

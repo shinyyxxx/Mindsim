@@ -1,6 +1,3 @@
-"""
-Django settings for api project.
-"""
 from pathlib import Path
 import os
 import sys
