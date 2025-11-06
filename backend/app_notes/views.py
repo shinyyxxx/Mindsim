@@ -321,7 +321,7 @@ def get_sphere(request, sphere_id):
 
 
 @csrf_exempt
-@require_http_methods(["PUT", "PATCH"])
+@require_http_methods(["POST"])
 @require_auth
 def update_sphere(request, sphere_id):
     """Update a mental sphere"""

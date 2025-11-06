@@ -15,4 +15,3 @@ python manage.py collectstatic --noinput
 
 # Start server
 exec "$@"
-
