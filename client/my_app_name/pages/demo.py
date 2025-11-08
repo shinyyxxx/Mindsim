@@ -8,7 +8,6 @@ from ..state import MindState
 
 
 def mental_factor_item(factor: dict) -> rx.Component:
-    """Create a clickable mental factor item for the UI panel."""
     return rx.box(
         rx.box(
             rx.text(
