@@ -77,25 +77,17 @@ def get_mind(request):
 @require_http_methods(["POST"])
 @require_auth
 def upsert_mind(request):
-    """
-    Create or update a Mind
-    POST body: {
-        "mind_id": int (optional, creates new if not provided or doesn't exist),
-        "mind_name": str,
-        "detail": str,
-        "position": [x, y, z],
-        "rec_status": boolean
-    }
-    Returns: { "mind": {...} }
-    """
     try:
         data = get_request_data(request)
         
         mind_id = data.get('mind_id')
         mind_name = data.get('mind_name', '').strip()
         detail = data.get('detail', '').strip()
-        position = data.get('position', [0, 0, 0])
+        color = data.get('color', '#FFFFFF')
         rec_status = data.get('rec_status', True)
+        position = data.get('position', [0, 0, 0])
+        rotation = data.get('rotation', [0, 0, 0])
+        scale = data.get('scale', 1.0)
         
         if not mind_name:
             return JsonResponse({'error': 'mind_name is required'}, status=400)
@@ -103,13 +95,19 @@ def upsert_mind(request):
         if not isinstance(position, list) or len(position) != 3:
             return JsonResponse({'error': 'position must be an array of 3 floats [x, y, z]'}, status=400)
         
+        if not isinstance(rotation, list) or len(rotation) != 3:
+            return JsonResponse({'error': 'rotation must be an array of 3 floats [x, y, z]'}, status=400)
+        
         _, root = get_connection()
         
         mind_data = {
             'name': mind_name,
             'detail': detail,
-            'position': position,
+            'color': color,
             'rec_status': rec_status,
+            'position': position,
+            'rotation': rotation,
+            'scale': scale,
             'created_by_id': request.user.id
         }
         

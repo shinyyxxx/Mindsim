@@ -288,17 +288,6 @@ def create_mind_zodb(root, mind_data):
 
 
 def update_mind_zodb(root, mind_id, mind_data):
-    """
-    Update a Mind in ZODB (upsert operation)
-    
-    Args:
-        root: ZODB root object
-        mind_id: ID of the mind to update (creates new if doesn't exist)
-        mind_data: Dictionary with updated mind information
-        
-    Returns:
-        int: The ID of the updated/created Mind
-    """
     try:
         if not hasattr(root, 'minds'):
             root.minds = {}
@@ -315,10 +304,11 @@ def update_mind_zodb(root, mind_id, mind_data):
             mind.set_name(mind_data['name'])
         if 'detail' in mind_data:
             mind.set_detail(mind_data['detail'])
-        if 'position' in mind_data:
-            mind.set_position(mind_data['position'])
+        if 'color' in mind_data:
+            mind.set_color(mind_data['color'])
         if 'rec_status' in mind_data:
             mind.set_rec_status(mind_data['rec_status'])
+        
         
         mind.set_updated_at(datetime.now())
         transaction.commit()
