@@ -7,7 +7,7 @@ import transaction
 import json
 
 
-def create_spatial_data(position=None, rotation=None, scale=None):
+def create_spatial_data(position=None, rotation=None, scale=None, object_type='mentalsphere'):
     if position is None:
         position = [0, 0, 0]
     if rotation is None:
@@ -16,8 +16,8 @@ def create_spatial_data(position=None, rotation=None, scale=None):
         scale = 1.0
     
     with connection.cursor() as cursor:
-        cursor.execute("""
-            INSERT INTO app_notes_mentalspherespatialdata (position, rotation, scale, created_at, updated_at)
+        cursor.execute(f"""
+            INSERT INTO app_notes_{object_type}spatialdata (position, rotation, scale, created_at, updated_at)
             VALUES (
                 ST_GeomFromEWKT(%s),
                 ST_GeomFromEWKT(%s),
@@ -35,7 +35,7 @@ def create_spatial_data(position=None, rotation=None, scale=None):
     return spatial_id
 
 
-def update_spatial_data(spatial_id, position=None, rotation=None, scale=None):
+def update_spatial_data(spatial_id, position=None, rotation=None, scale=None, object_type='mentalsphere'):
     pos_wkt = (
         f"SRID={SRID_3D};POINT Z({position[0]} {position[1]} {position[2]})"
         if position is not None
@@ -49,8 +49,8 @@ def update_spatial_data(spatial_id, position=None, rotation=None, scale=None):
 
     with connection.cursor() as cursor:
         cursor.execute(
-            """
-            UPDATE app_notes_mentalspherespatialdata
+            f"""
+            UPDATE app_notes_{object_type}spatialdata
             SET
                 position = COALESCE(
                     ST_GeomFromEWKT(%s),
@@ -68,11 +68,11 @@ def update_spatial_data(spatial_id, position=None, rotation=None, scale=None):
         )
 
 
-def get_spatial_data(spatial_id):
+def get_spatial_data(spatial_id, object_type='mentalsphere'):
     with connection.cursor() as cursor:
-        cursor.execute("""
+        cursor.execute(f"""
             SELECT ST_AsEWKT(position), ST_AsEWKT(rotation), scale
-            FROM app_notes_mentalspherespatialdata 
+            FROM app_notes_{object_type}spatialdata
             WHERE id=%s
         """, [spatial_id])
         result = cursor.fetchone()
@@ -82,7 +82,6 @@ def get_spatial_data(spatial_id):
 
         position_ewkt, rotation_ewkt, scale = result
         
-        # Parse EWKT format: 'SRID=4979;POINT Z(x y z)'
         position_coords = [float(c) for c in position_ewkt.split('(')[1].rstrip(')').split()]
         rotation_coords = [float(c) for c in rotation_ewkt.split('(')[1].rstrip(')').split()]
         scale = float(scale)
@@ -93,11 +92,6 @@ def get_spatial_data(spatial_id):
             'scale': scale
         }
 
-
-def delete_spatial_data(spatial_id):
-    """Delete spatial data from PostGIS"""
-    with connection.cursor() as cursor:
-        cursor.execute("DELETE FROM app_notes_mentalspherespatialdata WHERE id=%s", [spatial_id])
 
 
 def get_mental_sphere_id(root):
@@ -191,32 +185,6 @@ def update_mental_sphere_zodb(root, sphere_id, sphere_data):
         raise
 
 
-def delete_mental_sphere_zodb(root, sphere_id):
-    """
-    Delete a MentalSphere from ZODB and its spatial data
-    
-    Args:
-        root: ZODB root object
-        sphere_id: ID of the sphere to delete
-    """
-    try:
-        if not hasattr(root, 'mentalSpheres') or sphere_id not in root.mentalSpheres:
-            raise ValueError(f"MentalSphere with ID {sphere_id} not found")
-        
-        sphere = root.mentalSpheres[sphere_id]
-        
-        # Delete spatial data from PostGIS
-        if sphere.get_position_id():
-            delete_spatial_data(sphere.get_position_id())
-        
-        # Delete from ZODB
-        del root.mentalSpheres[sphere_id]
-        transaction.commit()
-    except Exception:
-        transaction.abort()
-        raise
-
-
 def get_mental_sphere_zodb(root, sphere_id):
     if not hasattr(root, 'mentalSpheres') or sphere_id not in root.mentalSpheres:
         return None
@@ -242,7 +210,6 @@ def get_mental_sphere_zodb(root, sphere_id):
 
 def create_mind_zodb(root, mind_data):
     try:
-        # Initialize minds if it doesn't exist
         if not hasattr(root, 'minds'):
             root.minds = {}
         
@@ -252,7 +219,8 @@ def create_mind_zodb(root, mind_data):
         spatial_data_id = create_spatial_data(
             position=mind_data.get('position', [0, 0, 0]),
             rotation=mind_data.get('rotation', [0, 0, 0]),
-            scale=mind_data.get('scale', 1.0)
+            scale=mind_data.get('scale', 1.0),
+            object_type='mind'
         )
 
         # Create Mind object in ZODB
@@ -298,10 +266,9 @@ def update_mind_zodb(root, mind_id, mind_data):
                 mind.get_spatial_data_id(),
                 position=mind_data['position'] if 'position' in mind_data else None,
                 rotation=mind_data['rotation'] if 'rotation' in mind_data else None,
-                scale=mind_data['scale'] if 'scale' in mind_data else None
+                scale=mind_data['scale'] if 'scale' in mind_data else None,
+                object_type='mind'
             )
-        
-        
         mind.set_updated_at(datetime.now())
         transaction.commit()
         return mind_id
@@ -317,7 +284,7 @@ def get_mind_zodb(root, mind_id):
     
     mind = root.minds[mind_id]
 
-    mind_spatial = get_spatial_data(mind.get_spatial_data_id())
+    mind_spatial = get_spatial_data(mind.get_spatial_data_id(), object_type='mind')
     
     return {
         'id': mind.get_id(),

@@ -11,6 +11,13 @@ class MentalSphereSpatialData(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
+class MindSpatialData(models.Model):
+    position = gis_models.PointField(dim=3, srid=SRID_3D)
+    rotation = gis_models.PointField(dim=3, srid=SRID_3D)
+    scale = models.FloatField(default=1.0)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
 class MentalSphere(models.Model):
     name = models.CharField(max_length=200)
     detail = models.TextField(blank=True, default='')

@@ -116,7 +116,6 @@ def upsert_mind(request):
         else:
             updated_mind_id = create_mind_zodb(root, mind_data)
         
-        # Get the updated/created mind
         mind = get_mind_zodb(root, updated_mind_id)
         
         return JsonResponse({
@@ -325,31 +324,6 @@ def update_sphere(request, sphere_id):
             'message': 'Mental sphere updated successfully',
             'mental_sphere': sphere
         }, status=200)
-    except ValueError as e:
-        return JsonResponse({'error': str(e)}, status=404)
-    except Exception as e:
-        return JsonResponse({'error': str(e)}, status=500)
-
-
-@csrf_exempt
-@require_http_methods(["DELETE"])
-@require_auth
-def delete_sphere(request, sphere_id):
-    """Delete a mental sphere"""
-    try:
-        _, root = get_connection()
-        
-        # Check if sphere exists and user owns it
-        existing_sphere = get_mental_sphere_zodb(root, sphere_id)
-        if not existing_sphere:
-            return JsonResponse({'error': 'Mental sphere not found'}, status=404)
-        
-        if existing_sphere['created_by_id'] != request.user.id:
-            return JsonResponse({'error': 'Unauthorized'}, status=403)
-        
-        delete_mental_sphere_zodb(root, sphere_id)
-        
-        return JsonResponse({'message': 'Mental sphere deleted successfully'}, status=200)
     except ValueError as e:
         return JsonResponse({'error': str(e)}, status=404)
     except Exception as e:
