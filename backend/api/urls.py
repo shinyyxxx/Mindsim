@@ -10,7 +10,7 @@ urlpatterns = [
     path('login/', auth_views.login_view),
     path('logout/', auth_views.logout_view),
     path('is_logged_in/', auth_views.is_logged_in),
-    # Notes endpoints
+    # Mental/Mind endpoints
     path('get_mind/', mind_views.get_mind),
     path('upsert_mind/', mind_views.upsert_mind),
     path('append_mental/', mind_views.add_mental_sphere),
