@@ -80,8 +80,8 @@ def upsert_mind(request):
     try:
         data = get_request_data(request)
         
-        mind_id = data.get('mind_id')
-        mind_name = data.get('mind_name', '').strip()
+        mind_id = data.get('id')
+        mind_name = data.get('name', '').strip()
         detail = data.get('detail', '').strip()
         color = data.get('color', '#FFFFFF')
         rec_status = data.get('rec_status', True)
@@ -90,7 +90,7 @@ def upsert_mind(request):
         scale = data.get('scale', 1.0)
         
         if not mind_name:
-            return JsonResponse({'error': 'mind_name is required'}, status=400)
+            return JsonResponse({'error': 'name is required'}, status=400)
         
         if not isinstance(position, list) or len(position) != 3:
             return JsonResponse({'error': 'position must be an array of 3 floats [x, y, z]'}, status=400)
@@ -108,14 +108,12 @@ def upsert_mind(request):
             'position': position,
             'rotation': rotation,
             'scale': scale,
-            'created_by_id': request.user.id
+            'created_by': request.user.id
         }
         
         if mind_id:
-            # Update existing or create new if doesn't exist
             updated_mind_id = update_mind_zodb(root, int(mind_id), mind_data)
         else:
-            # Create new mind
             updated_mind_id = create_mind_zodb(root, mind_data)
         
         # Get the updated/created mind

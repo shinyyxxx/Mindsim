@@ -35,51 +35,37 @@ def create_spatial_data(position=None, rotation=None, scale=None):
     return spatial_id
 
 
-def update_spatial_data(spatial_id, position=None, rotation=None):
-    """
-    Update existing spatial data in PostGIS
-    
-    Args:
-        spatial_id: The ID of the spatial data to update
-        position: [x, y, z] array for position
-        rotation: [x, y, z] array for rotation degrees
-    """
+def update_spatial_data(spatial_id, position=None, rotation=None, scale=None):
+    pos_wkt = (
+        f"SRID={SRID_3D};POINT Z({position[0]} {position[1]} {position[2]})"
+        if position is not None
+        else None
+    )
+    rot_wkt = (
+        f"SRID={SRID_3D};POINT Z({rotation[0]} {rotation[1]} {rotation[2]})"
+        if rotation is not None
+        else None
+    )
+
     with connection.cursor() as cursor:
-        if position and rotation:
-            cursor.execute("""
-                UPDATE app_notes_mentalspherespatialdata
-                SET 
-                    position = ST_GeomFromEWKT(%s),
-                    rotation = ST_GeomFromEWKT(%s),
-                    updated_at = NOW()
-                WHERE id = %s
-            """, [
-                f'SRID={SRID_3D};POINT Z({position[0]} {position[1]} {position[2]})',
-                f'SRID={SRID_3D};POINT Z({rotation[0]} {rotation[1]} {rotation[2]})',
-                spatial_id
-            ])
-        elif position:
-            cursor.execute("""
-                UPDATE app_notes_mentalspherespatialdata
-                SET 
-                    position = ST_GeomFromEWKT(%s),
-                    updated_at = NOW()
-                WHERE id = %s
-            """, [
-                f'SRID={SRID_3D};POINT Z({position[0]} {position[1]} {position[2]})',
-                spatial_id
-            ])
-        elif rotation:
-            cursor.execute("""
-                UPDATE app_notes_mentalspherespatialdata
-                SET 
-                    rotation = ST_GeomFromEWKT(%s),
-                    updated_at = NOW()
-                WHERE id = %s
-            """, [
-                f'SRID={SRID_3D};POINT Z({rotation[0]} {rotation[1]} {rotation[2]})',
-                spatial_id
-            ])
+        cursor.execute(
+            """
+            UPDATE app_notes_mentalspherespatialdata
+            SET
+                position = COALESCE(
+                    ST_GeomFromEWKT(%s),
+                    position
+                ),
+                rotation = COALESCE(
+                    ST_GeomFromEWKT(%s),
+                    rotation
+                ),
+                scale = COALESCE(%s, scale),
+                updated_at = NOW()
+            WHERE id = %s
+            """,
+            [pos_wkt, rot_wkt, scale, spatial_id],
+        )
 
 
 def get_spatial_data(spatial_id):
@@ -194,7 +180,8 @@ def update_mental_sphere_zodb(root, sphere_id, sphere_data):
             update_spatial_data(
                 sphere.get_position_id(),
                 position=sphere_data.get('position'),
-                rotation=sphere_data.get('rotation')
+                rotation=sphere_data.get('rotation'),
+                scale=sphere_data.get('scale')
             )
         
         sphere.set_updated_at(datetime.now())
@@ -261,15 +248,22 @@ def create_mind_zodb(root, mind_data):
         
         mind_id = get_mind_id(root)
         current_date = datetime.now()
-        
+
+        spatial_data_id = create_spatial_data(
+            position=mind_data.get('position', [0, 0, 0]),
+            rotation=mind_data.get('rotation', [0, 0, 0]),
+            scale=mind_data.get('scale', 1.0)
+        )
+
         # Create Mind object in ZODB
         root.minds[mind_id] = MindObject(
             id=mind_id,
             name=mind_data.get('name', ''),
             detail=mind_data.get('detail', ''),
-            position=mind_data.get('position', [0, 0, 0]),
+            color=mind_data.get('color', '#FFFFFF'),
+            spatial_data_id=spatial_data_id,
             rec_status=mind_data.get('rec_status', True),
-            created_by_id=mind_data.get('created_by_id'),
+            created_by=mind_data.get('created_by'),
             mental_sphere_ids=mind_data.get('mental_sphere_ids', []),
             created_at=current_date
         )
@@ -286,12 +280,9 @@ def update_mind_zodb(root, mind_id, mind_data):
         if not hasattr(root, 'minds'):
             root.minds = {}
         
-        # If mind doesn't exist, create it
         if mind_id not in root.minds:
-            mind_data['created_by_id'] = mind_data.get('created_by_id')
-            return create_mind_zodb(root, mind_data)
+            raise ValueError(f"Update Failed : Mind with ID {mind_id} not found")
         
-        # Update existing mind
         mind = root.minds[mind_id]
         
         if 'name' in mind_data:
@@ -302,6 +293,13 @@ def update_mind_zodb(root, mind_id, mind_data):
             mind.set_color(mind_data['color'])
         if 'rec_status' in mind_data:
             mind.set_rec_status(mind_data['rec_status'])
+        if 'position' or 'rotation' or 'scale' in mind_data:
+            update_spatial_data(
+                mind.get_spatial_data_id(),
+                position=mind_data['position'] if 'position' in mind_data else None,
+                rotation=mind_data['rotation'] if 'rotation' in mind_data else None,
+                scale=mind_data['scale'] if 'scale' in mind_data else None
+            )
         
         
         mind.set_updated_at(datetime.now())
@@ -313,28 +311,24 @@ def update_mind_zodb(root, mind_id, mind_data):
 
 
 def get_mind_zodb(root, mind_id):
-    """
-    Get a Mind from ZODB
-    
-    Args:
-        root: ZODB root object
-        mind_id: ID of the mind
-        
-    Returns:
-        dict: Dictionary with mind data
-    """
+
     if not hasattr(root, 'minds') or mind_id not in root.minds:
         return None
     
     mind = root.minds[mind_id]
+
+    mind_spatial = get_spatial_data(mind.get_spatial_data_id())
     
     return {
         'id': mind.get_id(),
         'name': mind.get_name(),
         'detail': mind.get_detail(),
-        'position': mind.get_position(),
+        'color': mind.get_color(),
         'rec_status': mind.get_rec_status(),
-        'created_by_id': mind.get_created_by_id(),
+        'position': mind_spatial['position'],
+        'rotation': mind_spatial['rotation'],
+        'scale': mind_spatial['scale'],
+        'created_by': mind.get_created_by(),
         'mental_sphere_ids': mind.get_mental_sphere_ids(),
         'created_at': mind.get_created_at().isoformat() if mind.get_created_at() else None,
         'updated_at': mind.get_updated_at().isoformat() if mind.get_updated_at() else None
