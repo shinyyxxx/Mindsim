@@ -83,18 +83,9 @@ def update_spatial_data(spatial_id, position=None, rotation=None):
 
 
 def get_spatial_data(spatial_id):
-    """
-    Get spatial data from PostGIS
-    
-    Args:
-        spatial_id: The ID of the spatial data
-        
-    Returns:
-        dict: Dictionary with 'position' and 'rotation' as [x, y, z] arrays
-    """
     with connection.cursor() as cursor:
         cursor.execute("""
-            SELECT ST_AsEWKT(position), ST_AsEWKT(rotation) 
+            SELECT ST_AsEWKT(position), ST_AsEWKT(rotation), scale
             FROM app_notes_mentalspherespatialdata 
             WHERE id=%s
         """, [spatial_id])
@@ -102,16 +93,18 @@ def get_spatial_data(spatial_id):
         
         if not result:
             return None
-        
-        position_ewkt, rotation_ewkt = result
+
+        position_ewkt, rotation_ewkt, scale = result
         
         # Parse EWKT format: 'SRID=4979;POINT Z(x y z)'
         position_coords = [float(c) for c in position_ewkt.split('(')[1].rstrip(')').split()]
         rotation_coords = [float(c) for c in rotation_ewkt.split('(')[1].rstrip(')').split()]
-        
+        scale = float(scale)
+
         return {
             'position': position_coords,
-            'rotation': rotation_coords
+            'rotation': rotation_coords,
+            'scale': scale
         }
 
 
@@ -249,11 +242,12 @@ def get_mental_sphere_zodb(root, sphere_id):
         'name': sphere.get_name(),
         'detail': sphere.get_detail(),
         'color': sphere.get_color(),
-        'image': sphere.get_texture(),
+        'image': sphere.get_image(),
         'rec_status': sphere.get_rec_status(),
         'created_by': sphere.get_created_by(),
-        'position': spatial_data['position'] if spatial_data else [0, 0, 0],
-        'rotation': spatial_data['rotation'] if spatial_data else [0, 0, 0],
+        'position': spatial_data['position'],
+        'rotation': spatial_data['rotation'],
+        'scale': spatial_data['scale'],
         'created_at': sphere.get_created_at().isoformat() if sphere.get_created_at() else None,
         'updated_at': sphere.get_updated_at().isoformat() if sphere.get_updated_at() else None
     }
