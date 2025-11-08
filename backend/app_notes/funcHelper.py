@@ -7,35 +7,29 @@ import transaction
 import json
 
 
-def create_spatial_data(position=None, rotation=None):
-    """
-    Create spatial data in PostGIS and return the ID
-    
-    Args:
-        position: [x, y, z] array for position
-        rotation: [x, y, z] array for rotation degrees
-        
-    Returns:
-        int: The ID of the created spatial data entry
-    """
+def create_spatial_data(position=None, rotation=None, scale=None):
     if position is None:
         position = [0, 0, 0]
     if rotation is None:
         rotation = [0, 0, 0]
+    if scale is None:
+        scale = 1.0
     
     with connection.cursor() as cursor:
         cursor.execute("""
-            INSERT INTO app_notes_mentalspherespatialdata (position, rotation, created_at, updated_at)
+            INSERT INTO app_notes_mentalspherespatialdata (position, rotation, scale, created_at, updated_at)
             VALUES (
                 ST_GeomFromEWKT(%s),
                 ST_GeomFromEWKT(%s),
+                %s,
                 NOW(),
                 NOW()
             )
             RETURNING id
         """, [
             f'SRID={SRID_3D};POINT Z({position[0]} {position[1]} {position[2]})',
-            f'SRID={SRID_3D};POINT Z({rotation[0]} {rotation[1]} {rotation[2]})'
+            f'SRID={SRID_3D};POINT Z({rotation[0]} {rotation[1]} {rotation[2]})',
+            scale
         ])
         spatial_id = cursor.fetchone()[0]
     return spatial_id
@@ -136,7 +130,6 @@ def get_mental_sphere_id(root):
 
 
 def get_mind_id(root):
-    """Get the next available ID for Mind in ZODB"""
     if not hasattr(root, 'minds') or not root.minds:
         return 1
     existing_ids = [int(key) for key in root.minds.keys() if str(key).isdigit()]
@@ -144,41 +137,28 @@ def get_mind_id(root):
 
 
 def create_mental_sphere_zodb(root, sphere_data):
-    """
-    Create a MentalSphere in ZODB
-    
-    Args:
-        root: ZODB root object
-        sphere_data: Dictionary with sphere information
-        
-    Returns:
-        int: The ID of the created MentalSphere
-    """
     try:
-        # Initialize mentalSpheres if it doesn't exist
         if not hasattr(root, 'mentalSpheres'):
             root.mentalSpheres = {}
         
         sphere_id = get_mental_sphere_id(root)
         current_date = datetime.now()
         
-        # Create spatial data in PostGIS
-        position_id = create_spatial_data(
+        spatial_data_id = create_spatial_data(
             position=sphere_data.get('position', [0, 0, 0]),
-            rotation=sphere_data.get('rotation', [0, 0, 0])
+            rotation=sphere_data.get('rotation', [0, 0, 0]),
+            scale=sphere_data.get('scale', 1.0)
         )
         
-        # Create MentalSphere object in ZODB
         root.mentalSpheres[sphere_id] = MentalSphereObject(
             id=sphere_id,
             name=sphere_data.get('name', ''),
             detail=sphere_data.get('detail', ''),
-            texture=sphere_data.get('texture', ''),
             color=sphere_data.get('color', '#FFFFFF'),
+            image=sphere_data.get('image', ''),
             rec_status=sphere_data.get('rec_status', True),
-            created_by_id=sphere_data.get('created_by_id'),
-            position_id=position_id,
-            rotation_id=position_id,  # Using same spatial data for both
+            spatial_data_id=spatial_data_id,
+            created_by=sphere_data.get('created_by'),
             created_at=current_date
         )
         
@@ -258,30 +238,20 @@ def delete_mental_sphere_zodb(root, sphere_id):
 
 
 def get_mental_sphere_zodb(root, sphere_id):
-    """
-    Get a MentalSphere from ZODB with its spatial data
-    
-    Args:
-        root: ZODB root object
-        sphere_id: ID of the sphere
-        
-    Returns:
-        dict: Dictionary with sphere data
-    """
     if not hasattr(root, 'mentalSpheres') or sphere_id not in root.mentalSpheres:
         return None
     
     sphere = root.mentalSpheres[sphere_id]
-    spatial_data = get_spatial_data(sphere.get_position_id())
+    spatial_data = get_spatial_data(sphere.get_spatial_data_id())
     
     return {
         'id': sphere.get_id(),
         'name': sphere.get_name(),
         'detail': sphere.get_detail(),
-        'texture': sphere.get_texture(),
         'color': sphere.get_color(),
+        'image': sphere.get_texture(),
         'rec_status': sphere.get_rec_status(),
-        'created_by_id': sphere.get_created_by_id(),
+        'created_by': sphere.get_created_by(),
         'position': spatial_data['position'] if spatial_data else [0, 0, 0],
         'rotation': spatial_data['rotation'] if spatial_data else [0, 0, 0],
         'created_at': sphere.get_created_at().isoformat() if sphere.get_created_at() else None,
@@ -290,16 +260,6 @@ def get_mental_sphere_zodb(root, sphere_id):
 
 
 def create_mind_zodb(root, mind_data):
-    """
-    Create a Mind in ZODB
-    
-    Args:
-        root: ZODB root object
-        mind_data: Dictionary with mind information
-        
-    Returns:
-        int: The ID of the created Mind
-    """
     try:
         # Initialize minds if it doesn't exist
         if not hasattr(root, 'minds'):

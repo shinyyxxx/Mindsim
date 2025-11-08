@@ -7,6 +7,7 @@ SRID_3D = 4979
 class MentalSphereSpatialData(models.Model):
     position = gis_models.PointField(dim=3, srid=SRID_3D)
     rotation = gis_models.PointField(dim=3, srid=SRID_3D)
+    scale = models.FloatField(default=1.0)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

@@ -20,7 +20,6 @@ from zodb.zodb_management import get_connection
 
 
 def get_request_data(request):
-    """Helper to get data from JSON or form-data"""
     try:
         if request.content_type == 'application/json':
             return json.loads(request.body)
@@ -230,36 +229,20 @@ def delete_mental_sphere(request):
 @require_http_methods(["POST"])
 @require_auth
 def create_sphere(request):
-    """
-    Create a new MentalSphere
-    POST body: {
-        "name": str,
-        "detail": str,
-        "texture": str,
-        "color": str (hex),
-        "rec_status": boolean,
-        "position": [x, y, z],
-        "rotation": [x, y, z]
-    }
-    """
     try:
         data = get_request_data(request)
-        
-        name = data.get('name', '').strip()
-        if not name:
-            return JsonResponse({'error': 'name is required'}, status=400)
-        
         _, root = get_connection()
         
         sphere_data = {
-            'name': name,
+            'name': data.get('name', ''),
             'detail': data.get('detail', ''),
-            'texture': data.get('texture', ''),
             'color': data.get('color', '#FFFFFF'),
+            'image': data.get('image', ''),
             'rec_status': data.get('rec_status', True),
             'position': data.get('position', [0, 0, 0]),
             'rotation': data.get('rotation', [0, 0, 0]),
-            'created_by_id': request.user.id
+            'scale': data.get('scale', 1.0),
+            'created_by': request.user.id
         }
         
         sphere_id = create_mental_sphere_zodb(root, sphere_data)
