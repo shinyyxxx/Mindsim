@@ -5,6 +5,7 @@ from app_notes.mentalSphereObject import MentalSphereObject, MindObject
 from zodb.zodb_management import get_connection
 import transaction
 import json
+from persistent.mapping import PersistentMapping
 
 
 def create_spatial_data(position=None, rotation=None, scale=None, object_type='mentalsphere'):
@@ -112,7 +113,7 @@ def get_mind_id(root):
 def create_mental_sphere_zodb(root, sphere_data):
     try:
         if not hasattr(root, 'mentalSpheres'):
-            root.mentalSpheres = {}
+            root.mentalSpheres = PersistentMapping()
         
         sphere_id = get_mental_sphere_id(root)
         current_date = datetime.now()
@@ -204,9 +205,10 @@ def get_mental_sphere_zodb(root, sphere_id):
 def create_mind_zodb(root, mind_data):
     try:
         if not hasattr(root, 'minds'):
-            root.minds = {}
+            root.minds = PersistentMapping()
         
         mind_id = get_mind_id(root)
+        
         current_date = datetime.now()
 
         spatial_data_id = create_spatial_data(
@@ -238,8 +240,10 @@ def create_mind_zodb(root, mind_data):
 
 def update_mind_zodb(root, mind_id, mind_data):
     try:
+
+        
         if not hasattr(root, 'minds'):
-            root.minds = {}
+            root.minds = PersistentMapping()
         
         if mind_id not in root.minds:
             raise ValueError(f"Update Failed : Mind with ID {mind_id} not found")

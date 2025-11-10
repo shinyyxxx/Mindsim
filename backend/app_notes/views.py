@@ -252,12 +252,13 @@ def list_spheres(request):
 
 
 @csrf_exempt
-@require_http_methods(["GET"])
+@require_http_methods(["POST"])
 @require_auth
-def get_sphere(request, sphere_id):
+def get_sphere(request):
     try:
         _, root = get_connection()
-        sphere = get_mental_sphere_zodb(root, sphere_id)
+        data = get_request_data(request)
+        sphere = get_mental_sphere_zodb(root, data.get('id'))
         
         if not sphere:
             return JsonResponse({'error': 'Mental sphere not found'}, status=404)
