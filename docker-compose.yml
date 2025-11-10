@@ -18,15 +18,16 @@ services:
       retries: 5
 
   web:
-    build: .
+    build: 
+      context: ./backend
     command: python manage.py runserver 0.0.0.0:8000
     volumes:
-      - .:/app
-      - zodb_data:/app/zodb_data
+      - ./backend:/app
+      - ./backend/zodb_data:/app/zodb_data
     ports:
       - "8000:8000"
     env_file:
-      - .env
+      - ./backend/.env
     environment:
       - DATABASE_NAME=${DATABASE_NAME:-dev}
       - DATABASE_USERNAME=${DATABASE_USERNAME:-postgres}
@@ -36,6 +37,20 @@ services:
     depends_on:
       db:
         condition: service_healthy
+
+  client:
+    build:
+      context: ./client
+    command: reflex run --env prod --backend-port 8001
+    volumes:
+      - ./client:/app
+    ports:
+      - "3001:3001"
+    environment:
+      - BACKEND_URL=http://web:8001
+    depends_on:
+      web:
+        condition: service_started
 
 volumes:
   postgres_data:
