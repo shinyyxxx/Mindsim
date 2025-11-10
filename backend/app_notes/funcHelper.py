@@ -143,14 +143,7 @@ def create_mental_sphere_zodb(root, sphere_data):
 
 
 def update_mental_sphere_zodb(root, sphere_id, sphere_data):
-    """
-    Update a MentalSphere in ZODB
-    
-    Args:
-        root: ZODB root object
-        sphere_id: ID of the sphere to update
-        sphere_data: Dictionary with updated sphere information
-    """
+    # under development
     try:
         if not hasattr(root, 'mentalSpheres') or sphere_id not in root.mentalSpheres:
             raise ValueError(f"MentalSphere with ID {sphere_id} not found")
@@ -303,14 +296,6 @@ def get_mind_zodb(root, mind_id):
 
 
 def add_mental_spheres_to_mind(root, mind_id, sphere_ids):
-    """
-    Add mental spheres to a mind
-    
-    Args:
-        root: ZODB root object
-        mind_id: ID of the mind
-        sphere_ids: List of sphere IDs to add
-    """
     try:
         if not hasattr(root, 'minds') or mind_id not in root.minds:
             raise ValueError(f"Mind with ID {mind_id} not found")
@@ -328,14 +313,6 @@ def add_mental_spheres_to_mind(root, mind_id, sphere_ids):
 
 
 def delete_mental_spheres_from_mind(root, mind_id, sphere_ids):
-    """
-    Remove mental spheres from a mind
-    
-    Args:
-        root: ZODB root object
-        mind_id: ID of the mind
-        sphere_ids: List of sphere IDs to remove
-    """
     try:
         if not hasattr(root, 'minds') or mind_id not in root.minds:
             raise ValueError(f"Mind with ID {mind_id} not found")

@@ -8,7 +8,6 @@ from .models import MentalSphere, Mind
 from .funcHelper import (
     create_mental_sphere_zodb,
     update_mental_sphere_zodb,
-    delete_mental_sphere_zodb,
     get_mental_sphere_zodb,
     create_mind_zodb,
     update_mind_zodb,
@@ -45,11 +44,7 @@ def require_auth(view_func):
 @require_http_methods(["POST"])
 @require_auth
 def get_mind(request):
-    """
-    Get Mind objects by ID list
-    POST body: { "mind_id_list": [1, 2, 3] }
-    Returns: { "minds": [...] }
-    """
+
     try:
         data = get_request_data(request)
         mind_id_list = data.get('mind_id_list', [])
@@ -126,18 +121,10 @@ def upsert_mind(request):
         return JsonResponse({'error': str(e)}, status=500)
 
 
-@csrf_exempt
+@csrf_exempt 
 @require_http_methods(["POST"])
 @require_auth
 def add_mental_sphere(request):
-    """
-    Add MentalSpheres to a Mind
-    POST body: {
-        "mind_id": int,
-        "sphere_id": [1, 2, 3]
-    }
-    Returns: { "mental_spheres": [...] }
-    """
     try:
         data = get_request_data(request)
         
@@ -152,10 +139,8 @@ def add_mental_sphere(request):
         
         _, root = get_connection()
         
-        # Add spheres to mind
         add_mental_spheres_to_mind(root, int(mind_id), sphere_ids)
         
-        # Get the mental spheres
         spheres = []
         for sphere_id in sphere_ids:
             sphere_data = get_mental_sphere_zodb(root, int(sphere_id))
@@ -172,18 +157,10 @@ def add_mental_sphere(request):
         return JsonResponse({'error': str(e)}, status=500)
 
 
-@csrf_exempt
+@csrf_exempt 
 @require_http_methods(["POST"])
 @require_auth
 def delete_mental_sphere(request):
-    """
-    Remove MentalSpheres from a Mind
-    POST body: {
-        "mind_id": int,
-        "sphere_id": [1, 2, 3]
-    }
-    Returns: { "mental_spheres": [...] }
-    """
     try:
         data = get_request_data(request)
         
@@ -198,10 +175,8 @@ def delete_mental_sphere(request):
         
         _, root = get_connection()
         
-        # Remove spheres from mind
         delete_mental_spheres_from_mind(root, int(mind_id), sphere_ids)
         
-        # Get the removed mental spheres info
         spheres = []
         for sphere_id in sphere_ids:
             sphere_data = get_mental_sphere_zodb(root, int(sphere_id))
@@ -251,11 +226,10 @@ def create_sphere(request):
         return JsonResponse({'error': str(e)}, status=500)
 
 
-@csrf_exempt
+@csrf_exempt 
 @require_http_methods(["GET"])
 @require_auth
 def list_spheres(request):
-    """Get all mental spheres for the current user"""
     try:
         _, root = get_connection()
         
@@ -281,7 +255,6 @@ def list_spheres(request):
 @require_http_methods(["GET"])
 @require_auth
 def get_sphere(request, sphere_id):
-    """Get a specific mental sphere by ID"""
     try:
         _, root = get_connection()
         sphere = get_mental_sphere_zodb(root, sphere_id)
@@ -289,8 +262,7 @@ def get_sphere(request, sphere_id):
         if not sphere:
             return JsonResponse({'error': 'Mental sphere not found'}, status=404)
         
-        # Check if user owns this sphere
-        if sphere['created_by_id'] != request.user.id:
+        if sphere['created_by'] != request.user.id:
             return JsonResponse({'error': 'Unauthorized'}, status=403)
         
         return JsonResponse({'mental_sphere': sphere}, status=200)
@@ -302,22 +274,19 @@ def get_sphere(request, sphere_id):
 @require_http_methods(["POST"])
 @require_auth
 def update_sphere(request, sphere_id):
-    """Update a mental sphere"""
     try:
         _, root = get_connection()
         
-        # Check if sphere exists and user owns it
         existing_sphere = get_mental_sphere_zodb(root, sphere_id)
         if not existing_sphere:
             return JsonResponse({'error': 'Mental sphere not found'}, status=404)
         
-        if existing_sphere['created_by_id'] != request.user.id:
+        if existing_sphere['created_by'] != request.user.id:
             return JsonResponse({'error': 'Unauthorized'}, status=403)
         
         data = get_request_data(request)
         update_mental_sphere_zodb(root, sphere_id, data)
         
-        # Get updated sphere
         sphere = get_mental_sphere_zodb(root, sphere_id)
         
         return JsonResponse({
