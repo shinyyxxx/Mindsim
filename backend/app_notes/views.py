@@ -42,7 +42,6 @@ def require_auth(view_func):
 
 @csrf_exempt
 @require_http_methods(["POST"])
-@require_auth
 def get_mind(request):
 
     try:
@@ -70,7 +69,6 @@ def get_mind(request):
 
 @csrf_exempt
 @require_http_methods(["POST"])
-@require_auth
 def upsert_mind(request):
     try:
         data = get_request_data(request)
@@ -123,7 +121,6 @@ def upsert_mind(request):
 
 @csrf_exempt 
 @require_http_methods(["POST"])
-@require_auth
 def add_mental_sphere(request):
     try:
         data = get_request_data(request)
@@ -159,7 +156,6 @@ def add_mental_sphere(request):
 
 @csrf_exempt 
 @require_http_methods(["POST"])
-@require_auth
 def delete_mental_sphere(request):
     try:
         data = get_request_data(request)
@@ -197,7 +193,6 @@ def delete_mental_sphere(request):
 
 @csrf_exempt
 @require_http_methods(["POST"])
-@require_auth
 def create_sphere(request):
     try:
         data = get_request_data(request)
@@ -228,7 +223,6 @@ def create_sphere(request):
 
 @csrf_exempt 
 @require_http_methods(["GET"])
-@require_auth
 def list_spheres(request):
     try:
         _, root = get_connection()
@@ -253,7 +247,6 @@ def list_spheres(request):
 
 @csrf_exempt
 @require_http_methods(["POST"])
-@require_auth
 def get_sphere(request):
     try:
         _, root = get_connection()
@@ -263,8 +256,8 @@ def get_sphere(request):
         if not sphere:
             return JsonResponse({'error': 'Mental sphere not found'}, status=404)
         
-        if sphere['created_by'] != request.user.id:
-            return JsonResponse({'error': 'Unauthorized'}, status=403)
+        # if sphere['created_by'] != request.user.id:
+        #     return JsonResponse({'error': 'Unauthorized'}, status=403)
         
         return JsonResponse({'mental_sphere': sphere}, status=200)
     except Exception as e:
@@ -273,7 +266,6 @@ def get_sphere(request):
 
 @csrf_exempt
 @require_http_methods(["POST"])
-@require_auth
 def update_sphere(request, sphere_id):
     try:
         _, root = get_connection()
